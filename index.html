@@ -3,62 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة مراقبة غرفة عبدالمجيد | Smart Room Dashboard</title>
+    <title>لوحة مراقبة غرفة عبدالمجيد</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 </head>
 <body>
     <!-- Header -->
     <header class="header">
         <div class="container">
             <div class="header-content">
-                <!-- User Welcome -->
                 <div class="user-welcome">
                     <span id="welcomeText">أهلاً</span>
                 </div>
-
-                <!-- Dashboard Title -->
                 <div class="dashboard-title">
                     <h1 id="dashboardTitle">لوحة مراقبة غرفة عبدالمجيد</h1>
                 </div>
-
-                <!-- Controls -->
                 <div class="header-controls">
-                    <!-- Connection Status -->
                     <div class="connection-status" id="connectionStatus">
                         <div class="status-indicator" id="statusIndicator"></div>
                         <span id="statusText">متصل</span>
                     </div>
-
-                    <!-- Language Toggle -->
-                    <button id="languageToggle" class="control-btn" title="تغيير اللغة">
-                        <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"/>
-                            <line x1="2" y1="12" x2="22" y2="12"/>
-                            <path d="m8 12 8-8v8H8z"/>
-                        </svg>
+                    <button id="languageToggle" class="control-btn">
                         <span id="langText">EN</span>
                     </button>
-
-                    <!-- Theme Toggle -->
-                    <button id="themeToggle" class="control-btn" title="تغيير الوضع">
-                        <svg id="themeIcon" class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <button id="themeToggle" class="control-btn">
+                        <svg id="themeIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
                         </svg>
                     </button>
-
-                    <!-- Digital Clock -->
                     <div class="digital-clock">
-                        <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"/>
-                            <polyline points="12,6 12,12 16,14"/>
-                        </svg>
                         <span id="digitalClock">00:00:00</span>
                     </div>
                 </div>
@@ -70,19 +45,18 @@
     <div id="alertBanner" class="alert-banner hidden">
         <div class="container">
             <div class="alert-content">
-                <svg class="alert-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
-                    <line x1="12" y1="9" x2="12" y2="13"/>
-                    <line x1="12" y1="17" x2="12.01" y2="17"/>
-                </svg>
                 <span id="alertMessage"></span>
-                <button id="closeAlert" class="close-alert" title="إغلاق التنبيه">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"/>
-                        <line x1="6" y1="6" x2="18" y2="18"/>
-                    </svg>
-                </button>
+                <button id="closeAlert" class="close-alert">×</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Tooltip -->
+    <div id="chartTooltip" class="chart-tooltip hidden">
+        <div class="tooltip-content">
+            <div class="tooltip-title" id="tooltipTitle"></div>
+            <div class="tooltip-value" id="tooltipValue"></div>
+            <div class="tooltip-time" id="tooltipTime"></div>
         </div>
     </div>
 
@@ -94,18 +68,18 @@
                 <div class="mode-toggle-card" id="modeToggleCard">
                     <div class="mode-buttons">
                         <button id="normalMode" class="mode-btn active">
-                            <svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
                                 <polyline points="9,22 9,12 15,12 15,22"/>
                             </svg>
-                            <span class="mode-text" id="normalModeText">الوضع العادي</span>
+                            <span id="normalModeText">الوضع العادي</span>
                         </button>
                         <div class="mode-divider">|</div>
                         <button id="securityMode" class="mode-btn">
-                            <svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                             </svg>
-                            <span class="mode-text" id="securityModeText">وضع الأمان</span>
+                            <span id="securityModeText">وضع الأمان</span>
                         </button>
                     </div>
                     <div class="mode-status">
@@ -121,12 +95,23 @@
                     <div class="sensor-card" id="temperatureCard">
                         <div class="card-header">
                             <span class="card-title" id="tempTitle">درجة الحرارة</span>
-                            <svg class="card-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/>
                             </svg>
                         </div>
                         <div class="card-content">
                             <div class="sensor-value" id="temperatureValue">-- °م</div>
+                            <div class="sensor-stats">
+                                <div class="stat-item">
+                                    <span class="stat-label" id="tempMaxLabel">أعلى:</span>
+                                    <span class="stat-value" id="tempMaxValue">--</span>
+                                </div>
+                                <div class="stat-divider"></div>
+                                <div class="stat-item">
+                                    <span class="stat-label" id="tempMinLabel">أدنى:</span>
+                                    <span class="stat-value" id="tempMinValue">--</span>
+                                </div>
+                            </div>
                             <div class="live-indicator">
                                 <div class="pulse-dot" id="tempPulseDot"></div>
                                 <span class="live-text" id="tempLiveText">مباشر</span>
@@ -138,12 +123,23 @@
                     <div class="sensor-card" id="humidityCard">
                         <div class="card-header">
                             <span class="card-title" id="humidityTitle">الرطوبة</span>
-                            <svg class="card-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
                             </svg>
                         </div>
                         <div class="card-content">
                             <div class="sensor-value" id="humidityValue">-- %</div>
+                            <div class="sensor-stats">
+                                <div class="stat-item">
+                                    <span class="stat-label" id="humidityMaxLabel">أعلى:</span>
+                                    <span class="stat-value" id="humidityMaxValue">--</span>
+                                </div>
+                                <div class="stat-divider"></div>
+                                <div class="stat-item">
+                                    <span class="stat-label" id="humidityMinLabel">أدنى:</span>
+                                    <span class="stat-value" id="humidityMinValue">--</span>
+                                </div>
+                            </div>
                             <div class="live-indicator">
                                 <div class="pulse-dot" id="humidityPulseDot"></div>
                                 <span class="live-text" id="humidityLiveText">مباشر</span>
@@ -155,14 +151,31 @@
                     <div class="sensor-card" id="lightCard">
                         <div class="card-header">
                             <span class="card-title" id="lightTitle">الإضاءة</span>
-                            <svg class="card-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/>
-                                <path d="M9 18h6"/>
-                                <path d="M10 22h4"/>
+                            <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="5"/>
+                                <line x1="12" y1="1" x2="12" y2="3"/>
+                                <line x1="12" y1="21" x2="12" y2="23"/>
+                                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                                <line x1="1" y1="12" x2="3" y2="12"/>
+                                <line x1="21" y1="12" x2="23" y2="12"/>
+                                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
                             </svg>
                         </div>
                         <div class="card-content">
                             <div class="sensor-value" id="lightValue">-- إضاءة</div>
+                            <div class="sensor-stats">
+                                <div class="stat-item">
+                                    <span class="stat-label" id="lightMaxLabel">أعلى:</span>
+                                    <span class="stat-value" id="lightMaxValue">--</span>
+                                </div>
+                                <div class="stat-divider"></div>
+                                <div class="stat-item">
+                                    <span class="stat-label" id="lightMinLabel">أدنى:</span>
+                                    <span class="stat-value" id="lightMinValue">--</span>
+                                </div>
+                            </div>
                             <div class="live-indicator">
                                 <div class="pulse-dot" id="lightPulseDot"></div>
                                 <span class="live-text" id="lightLiveText">مباشر</span>
@@ -174,14 +187,24 @@
                     <div class="sensor-card" id="doorCard">
                         <div class="card-header">
                             <span class="card-title" id="doorTitle">حالة الباب</span>
-                            <svg class="card-icon" id="doorIcon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect width="18" height="18" x="3" y="4" rx="2"/>
-                                <path d="M3 10h18"/>
-                                <circle cx="8" cy="14" r="1"/>
+                            <svg class="card-icon" id="doorIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/>
+                                <circle cx="15" cy="12" r="1"/>
                             </svg>
                         </div>
                         <div class="card-content">
                             <div class="sensor-value" id="doorValue">-- حالة</div>
+                            <div class="sensor-stats">
+                                <div class="stat-item">
+                                    <span class="stat-label" id="doorOpenLabel">فتح:</span>
+                                    <span class="stat-value" id="doorOpenCount">0</span>
+                                </div>
+                                <div class="stat-divider"></div>
+                                <div class="stat-item">
+                                    <span class="stat-label" id="doorCloseLabel">إغلاق:</span>
+                                    <span class="stat-value" id="doorCloseCount">0</span>
+                                </div>
+                            </div>
                             <div class="live-indicator">
                                 <div class="pulse-dot" id="doorPulseDot"></div>
                                 <span class="live-text" id="doorLiveText">مباشر</span>
@@ -191,38 +214,28 @@
                 </div>
             </section>
 
-            <!-- Room Status (Security Mode Only) -->
+            <!-- Events and Alerts (Security Mode Only) -->
             <section id="roomStatusSection" class="room-status-section hidden">
                 <div class="status-grid">
-                    <!-- Events Log -->
                     <div class="status-card">
                         <div class="status-header">
-                            <svg class="status-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
-                                <line x1="12" y1="9" x2="12" y2="13"/>
-                                <line x1="12" y1="17" x2="12.01" y2="17"/>
-                            </svg>
                             <h3 id="eventsLogTitle">سجل الأحداث</h3>
                         </div>
                         <div class="status-content">
                             <div id="eventsList" class="events-list">
-                                <div class="no-events" id="noEventsText">لا توجد أحداث مسجلة</div>
+                                <div class="no-events">لا توجد أحداث مسجلة</div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Active Alerts -->
                     <div class="status-card alerts-card">
                         <div class="status-header">
-                            <svg class="status-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                            </svg>
                             <h3 id="alertsTitle">التنبيهات الأمنية</h3>
                             <button id="clearAllAlerts" class="clear-btn hidden">مسح الكل</button>
                         </div>
                         <div class="status-content">
                             <div id="alertsList" class="alerts-list">
-                                <div class="no-alerts" id="noAlertsText">لا توجد تنبيهات نشطة</div>
+                                <div class="no-alerts">لا توجد تنبيهات نشطة</div>
                             </div>
                         </div>
                     </div>
@@ -233,24 +246,32 @@
             <section class="charts-section">
                 <div class="charts-card">
                     <div class="charts-header">
-                        <h3 id="chartsTitle">الرسوم البيانية</h3>
+                        <h3 id="chartsTitle">الرسوم البيانية اليومية</h3>
                     </div>
                     <div class="charts-grid">
                         <div class="chart-container">
                             <h4 id="tempChartTitle">درجة الحرارة</h4>
-                            <canvas id="temperatureChart" width="400" height="200"></canvas>
+                            <div class="chart-wrapper">
+                                <canvas id="temperatureChart" width="400" height="200"></canvas>
+                            </div>
                         </div>
                         <div class="chart-container">
                             <h4 id="humidityChartTitle">الرطوبة</h4>
-                            <canvas id="humidityChart" width="400" height="200"></canvas>
+                            <div class="chart-wrapper">
+                                <canvas id="humidityChart" width="400" height="200"></canvas>
+                            </div>
                         </div>
                         <div class="chart-container">
                             <h4 id="lightChartTitle">الإضاءة</h4>
-                            <canvas id="lightChart" width="400" height="200"></canvas>
+                            <div class="chart-wrapper">
+                                <canvas id="lightChart" width="400" height="200"></canvas>
+                            </div>
                         </div>
                         <div class="chart-container">
                             <h4 id="doorChartTitle">حالة الباب</h4>
-                            <canvas id="doorChart" width="400" height="200"></canvas>
+                            <div class="chart-wrapper">
+                                <canvas id="doorChart" width="400" height="200"></canvas>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -261,10 +282,15 @@
     <!-- Footer -->
     <footer class="footer">
         <div class="container">
-            <p>&copy; 2024 لوحة مراقبة غرفة عبدالمجيد - جميع الحقوق محفوظة</p>
+            <p>صنع بواسطة <a href="https://www.linkedin.com/in/abdulmajeed-al-shammari-2625a3287/" target="_blank">عبدالمجيد الشمري</a></p>
         </div>
     </footer>
 
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    
+    <!-- Main Script -->
     <script src="script.js"></script>
 </body>
 </html>
