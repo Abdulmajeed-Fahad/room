@@ -13,45 +13,19 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 
-// ===== DASHBOARD CONFIGURATION =====
+// ===== CONFIGURATION =====
 const CONFIG = {
-    CLOCK_UPDATE_INTERVAL: 1000,
-    CHART_UPDATE_INTERVAL: 2000,
-    CHART_MAX_POINTS: 20,
-    CHART_PADDING: 40,
-    CHART_GRID_LINES: 5,
     USER_UID: "XjMYPsQpMVXEiCQYecoBBR8Sxto1",
     TEMPERATURE: { HIGH: 30, LOW: 18 },
-    HUMIDITY: { HIGH: 70, LOW: 30 },
-    LIGHT: { 
-        NONE: 500, 
-        DIM: 1500, 
-        MEDIUM: 2500, 
-        BRIGHT: 3500 
-    },
-    DOOR: {
-        BASE_DISTANCE: 120,
-        ERROR_MARGIN: 10,
-        MIN_CLOSED: 110,
-        MAX_CLOSED: 130
-    },
-    ALERT_AUTO_HIDE_DELAY: 5000,
-    MAX_EVENTS: 50,
-    CONNECTION_TIMEOUT: 10000,
-    STORAGE_KEYS: {
-        LANGUAGE: 'dashboard-language',
-        THEME: 'dashboard-theme',
-        MODE: 'dashboard-mode',
-        SENSOR_DATA: 'dashboard-sensor-data',
-        CHART_DATA: 'dashboard-chart-data',
-        EVENTS: 'dashboard-events',
-        ALERTS: 'dashboard-alerts'
-    },
-    DEFAULTS: {
-        LANGUAGE: 'ar',
-        THEME: 'light',
-        MODE: 'normal'
-    }
+    HUMIDITY: { HIGH: 70, LOW: 5 },
+    LIGHT: { NONE: 500, DIM: 1500, MEDIUM: 2500, BRIGHT: 3500 },
+    DOOR: { MIN_CLOSED: 110, MAX_CLOSED: 130 },
+    CHART_MAX_POINTS: 100,
+    UPDATE_INTERVAL: 1000,
+    CHART_UPDATE_INTERVAL: 5000,
+    SAVE_INTERVAL: 30000,
+    DAILY_RESET_HOUR: 0,
+    HUMIDITY_ALERT_INTERVAL: 600000 // 10 minutes
 };
 
 // ===== TRANSLATIONS =====
@@ -74,42 +48,31 @@ const TRANSLATIONS = {
         connected: 'متصل',
         connecting: 'جاري الاتصال',
         disconnected: 'منقطع',
-        // Light levels
         light_none: 'لا يوجد ضوء',
         light_dim: 'ضوء خفيف',
         light_medium: 'ضوء متوسط',
         light_bright: 'ضوء قوي',
         light_very_bright: 'ضوء ساطع جداً',
-        // Door status
-        door_closed: 'الباب مغلق',
-        door_open: 'الباب مفتوح',
-        door_sensor_error: 'حساس المسافة لا يستجيب',
-        // Events
-        temp_high: 'درجة حرارة مرتفعة',
-        temp_low: 'درجة حرارة منخفضة',
-        humidity_high: 'رطوبة مرتفعة',
-        humidity_low: 'رطوبة منخفضة',
-        light_changed: 'تغيير في الإضاءة',
-        door_opened: 'تم فتح الباب',
-        door_closed_event: 'تم إغلاق الباب',
-        sensor_error: 'خطأ في الحساس',
+        door_closed: 'مغلق',
+        door_open: 'مفتوح',
+        door_sensor_error: 'خطأ في الحساس',
         events_log: 'سجل الأحداث',
         security_alert: 'تنبيه أمني',
         clear_alerts: 'مسح الكل',
         no_events: 'لا توجد أحداث مسجلة',
         no_alerts: 'لا توجد تنبيهات نشطة',
-        charts_title: 'الرسوم البيانية',
+        charts_title: 'الرسوم البيانية اليومية',
         temperature_chart: 'درجة الحرارة',
         humidity_chart: 'الرطوبة',
         light_chart: 'الإضاءة',
         door_chart: 'حالة الباب',
-        high: 'عالي',
-        medium: 'متوسط',
-        low: 'منخفض',
-        connection_lost: 'انقطع الاتصال مع Firebase',
-        data_updated: 'تم تحديث البيانات',
-        data_restored: 'تم استعادة البيانات المحفوظة',
-        data_saved: 'تم حفظ البيانات محلياً'
+        at_time: 'في',
+        on_date: 'بتاريخ',
+        max_label: 'أعلى:',
+        min_label: 'أدنى:',
+        open_count: 'فتح:',
+        close_count: 'إغلاق:',
+        times: 'مرة'
     },
     en: {
         welcome: 'Welcome',
@@ -129,59 +92,45 @@ const TRANSLATIONS = {
         connected: 'Connected',
         connecting: 'Connecting',
         disconnected: 'Disconnected',
-        // Light levels
         light_none: 'No Light',
         light_dim: 'Dim Light',
         light_medium: 'Medium Light',
         light_bright: 'Bright Light',
         light_very_bright: 'Very Bright Light',
-        // Door status
-        door_closed: 'Door Closed',
-        door_open: 'Door Open',
-        door_sensor_error: 'Distance Sensor Not Responding',
-        // Events
-        temp_high: 'High temperature detected',
-        temp_low: 'Low temperature detected',
-        humidity_high: 'High humidity detected',
-        humidity_low: 'Low humidity detected',
-        light_changed: 'Light level changed',
-        door_opened: 'Door opened',
-        door_closed_event: 'Door closed',
-        sensor_error: 'Sensor Error',
+        door_closed: 'Closed',
+        door_open: 'Open',
+        door_sensor_error: 'Sensor Error',
         events_log: 'Events Log',
         security_alert: 'Security Alert',
         clear_alerts: 'Clear All',
         no_events: 'No events recorded',
         no_alerts: 'No active alerts',
-        charts_title: 'Charts',
+        charts_title: 'Daily Charts',
         temperature_chart: 'Temperature',
         humidity_chart: 'Humidity',
         light_chart: 'Light',
         door_chart: 'Door Status',
-        high: 'High',
-        medium: 'Medium',
-        low: 'Low',
-        connection_lost: 'Connection lost to Firebase',
-        data_updated: 'Data updated',
-        data_restored: 'Saved data restored',
-        data_saved: 'Data saved locally'
+        at_time: 'at',
+        on_date: 'on',
+        max_label: 'Max:',
+        min_label: 'Min:',
+        open_count: 'Open:',
+        close_count: 'Close:',
+        times: 'times'
     }
 };
 
 // ===== DASHBOARD STATE =====
 const DASHBOARD_STATE = {
-    currentLanguage: localStorage.getItem(CONFIG.STORAGE_KEYS.LANGUAGE) || CONFIG.DEFAULTS.LANGUAGE,
-    currentTheme: localStorage.getItem(CONFIG.STORAGE_KEYS.THEME) || CONFIG.DEFAULTS.THEME,
-    currentMode: localStorage.getItem(CONFIG.STORAGE_KEYS.MODE) || CONFIG.DEFAULTS.MODE,
+    currentLanguage: localStorage.getItem('dashboard-language') || 'ar',
+    currentTheme: localStorage.getItem('dashboard-theme') || 'light',
+    currentMode: localStorage.getItem('dashboard-mode') || 'normal',
     isConnected: false,
-    connectionStatus: 'connecting',
-    lastDataUpdate: null,
     sensorData: {
         temperature: null,
         humidity: null,
         ldr: null,
-        distance_cm: null,
-        timestamp: null
+        distance_cm: null
     },
     previousSensorData: {
         temperature: null,
@@ -189,32 +138,35 @@ const DASHBOARD_STATE = {
         ldr: null,
         distance_cm: null
     },
-    events: [],
-    alerts: [],
+    dailyStats: JSON.parse(localStorage.getItem('daily-stats') || JSON.stringify({
+        temperature: { max: null, min: null },
+        humidity: { max: null, min: null },
+        light: { max: null, min: null },
+        door: { openCount: 0, closeCount: 0 }
+    })),
+    events: JSON.parse(localStorage.getItem('dashboard-events') || '[]'),
+    alerts: JSON.parse(localStorage.getItem('dashboard-alerts') || '[]'),
     chartData: {
-        temperature: [],
-        humidity: [],
-        light: [],
-        door: []
-    },
-    historicalData: {
-        temperature: [],
-        humidity: [],
-        light: [],
-        door: []
+        temperature: JSON.parse(localStorage.getItem('chart-temperature') || '[]'),
+        humidity: JSON.parse(localStorage.getItem('chart-humidity') || '[]'),
+        light: JSON.parse(localStorage.getItem('chart-light') || '[]'),
+        door: JSON.parse(localStorage.getItem('chart-door') || '[]')
     },
     intervals: {
         clock: null,
         charts: null,
-        dataSave: null
+        save: null,
+        dailyReset: null
     },
-    firebaseRefs: {
+    lastDoorState: null,
+    lastAlertTime: {
         temperature: null,
         humidity: null,
-        ldr: null,
-        distance: null,
-        readings: null
-    }
+        light: null,
+        door: null
+    },
+    lastResetDate: localStorage.getItem('last-reset-date') || new Date().toDateString(),
+    offlineData: JSON.parse(localStorage.getItem('offline-data') || '[]')
 };
 
 // ===== UTILITY FUNCTIONS =====
@@ -233,6 +185,33 @@ function formatTime(date) {
     );
 }
 
+function formatDateTime(date) {
+    const dateStr = date.toLocaleDateString(
+        DASHBOARD_STATE.currentLanguage === 'ar' ? 'ar-SA' : 'en-US',
+        {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        }
+    );
+    const timeStr = formatTime(date);
+    return `${dateStr} ${timeStr}`;
+}
+
+function formatNumber(number, decimals = 1) {
+    if (DASHBOARD_STATE.currentLanguage === 'ar') {
+        return number.toFixed(decimals).replace('.', '٫').replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
+    }
+    return number.toFixed(decimals);
+}
+
+function formatInteger(number) {
+    if (DASHBOARD_STATE.currentLanguage === 'ar') {
+        return number.toString().replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
+    }
+    return number.toString();
+}
+
 function updateElement(id, text) {
     const element = document.getElementById(id);
     if (element) {
@@ -246,231 +225,221 @@ function logMessage(message, type = 'info') {
     console.log(`${prefix} [${timestamp}] ${message}`);
 }
 
-// ===== DATA PERSISTENCE FUNCTIONS =====
-function saveDataToStorage() {
-    try {
-        // Save sensor data
-        localStorage.setItem(CONFIG.STORAGE_KEYS.SENSOR_DATA, JSON.stringify(DASHBOARD_STATE.sensorData));
+// ===== OFFLINE DATA MANAGEMENT =====
+function storeOfflineData(type, value) {
+    const now = new Date();
+    DASHBOARD_STATE.offlineData.push({
+        type,
+        value,
+        timestamp: now.toISOString()
+    });
+    
+    // Keep only last 1000 offline entries
+    if (DASHBOARD_STATE.offlineData.length > 1000) {
+        DASHBOARD_STATE.offlineData = DASHBOARD_STATE.offlineData.slice(-1000);
+    }
+    
+    localStorage.setItem('offline-data', JSON.stringify(DASHBOARD_STATE.offlineData));
+}
+
+function processOfflineData() {
+    if (DASHBOARD_STATE.offlineData.length > 0) {
+        logMessage(`Processing ${DASHBOARD_STATE.offlineData.length} offline data points`, 'info');
         
-        // Save chart data
-        localStorage.setItem(CONFIG.STORAGE_KEYS.CHART_DATA, JSON.stringify(DASHBOARD_STATE.historicalData));
+        DASHBOARD_STATE.offlineData.forEach(data => {
+            const timestamp = new Date(data.timestamp);
+            addToChart(data.type, data.value, timestamp);
+            updateDailyStats(data.type, data.value);
+        });
         
-        // Save events (limit to last 20)
-        const eventsToSave = DASHBOARD_STATE.events.slice(0, 20);
-        localStorage.setItem(CONFIG.STORAGE_KEYS.EVENTS, JSON.stringify(eventsToSave));
+        // Clear offline data after processing
+        DASHBOARD_STATE.offlineData = [];
+        localStorage.setItem('offline-data', JSON.stringify(DASHBOARD_STATE.offlineData));
         
-        // Save alerts
-        localStorage.setItem(CONFIG.STORAGE_KEYS.ALERTS, JSON.stringify(DASHBOARD_STATE.alerts));
-        
-        logMessage(t('data_saved'), 'success');
-    } catch (error) {
-        logMessage(`Storage save error: ${error.message}`, 'error');
+        logMessage('Offline data processed successfully', 'success');
     }
 }
 
-function loadDataFromStorage() {
-    try {
-        // Load sensor data
-        const savedSensorData = localStorage.getItem(CONFIG.STORAGE_KEYS.SENSOR_DATA);
-        if (savedSensorData) {
-            DASHBOARD_STATE.sensorData = JSON.parse(savedSensorData);
-        }
-        
-        // Load chart data
-        const savedChartData = localStorage.getItem(CONFIG.STORAGE_KEYS.CHART_DATA);
-        if (savedChartData) {
-            const parsedData = JSON.parse(savedChartData);
-            // Convert timestamp strings back to Date objects
-            Object.keys(parsedData).forEach(key => {
-                if (parsedData[key] && Array.isArray(parsedData[key])) {
-                    parsedData[key] = parsedData[key].map(item => ({
-                        ...item,
-                        timestamp: new Date(item.timestamp)
-                    }));
-                }
-            });
-            DASHBOARD_STATE.historicalData = parsedData;
-        }
-        
-        // Load events
-        const savedEvents = localStorage.getItem(CONFIG.STORAGE_KEYS.EVENTS);
-        if (savedEvents) {
-            DASHBOARD_STATE.events = JSON.parse(savedEvents).map(event => ({
-                ...event,
-                timestamp: new Date(event.timestamp)
-            }));
-        }
-        
-        // Load alerts
-        const savedAlerts = localStorage.getItem(CONFIG.STORAGE_KEYS.ALERTS);
-        if (savedAlerts) {
-            DASHBOARD_STATE.alerts = JSON.parse(savedAlerts).map(alert => ({
-                ...alert,
-                timestamp: new Date(alert.timestamp)
-            }));
-        }
-        
-        // Update UI with restored data
-        updateAllSensorCards();
-        renderCharts();
-        updateEventsDisplay();
-        updateAlertsDisplay();
-        
-        logMessage(t('data_restored'), 'success');
-        return true;
-    } catch (error) {
-        logMessage(`Storage load error: ${error.message}`, 'error');
-        return false;
+// ===== DAILY RESET FUNCTIONS =====
+function checkDailyReset() {
+    const today = new Date().toDateString();
+    if (DASHBOARD_STATE.lastResetDate !== today) {
+        resetDailyStats();
+        DASHBOARD_STATE.lastResetDate = today;
+        localStorage.setItem('last-reset-date', today);
+        logMessage('🔄 Daily stats reset completed', 'info');
+    }
+}
+
+function resetDailyStats() {
+    DASHBOARD_STATE.dailyStats = {
+        temperature: { max: null, min: null },
+        humidity: { max: null, min: null },
+        light: { max: null, min: null },
+        door: { openCount: 0, closeCount: 0 }
+    };
+    
+    DASHBOARD_STATE.chartData = {
+        temperature: [],
+        humidity: [],
+        light: [],
+        door: []
+    };
+    
+    saveDailyStats();
+    Object.keys(DASHBOARD_STATE.chartData).forEach(key => {
+        localStorage.setItem(`chart-${key}`, JSON.stringify(DASHBOARD_STATE.chartData[key]));
+    });
+    
+    updateDailyStatsDisplay();
+}
+
+function saveDailyStats() {
+    localStorage.setItem('daily-stats', JSON.stringify(DASHBOARD_STATE.dailyStats));
+}
+
+function loadDailyStats() {
+    const saved = localStorage.getItem('daily-stats');
+    if (saved) {
+        DASHBOARD_STATE.dailyStats = JSON.parse(saved);
     }
 }
 
 // ===== LIGHT LEVEL FUNCTIONS =====
 function getLightLevel(ldrValue) {
     if (ldrValue <= CONFIG.LIGHT.NONE) {
-        return {
-            text: t('light_none'),
-            class: 'none',
-            color: '#1e40af'
-        };
+        return { text: t('light_none'), class: 'none' };
     } else if (ldrValue <= CONFIG.LIGHT.DIM) {
-        return {
-            text: t('light_dim'),
-            class: 'dim',
-            color: '#3b82f6'
-        };
+        return { text: t('light_dim'), class: 'dim' };
     } else if (ldrValue <= CONFIG.LIGHT.MEDIUM) {
-        return {
-            text: t('light_medium'),
-            class: 'medium',
-            color: '#10b981'
-        };
+        return { text: t('light_medium'), class: 'medium' };
     } else if (ldrValue <= CONFIG.LIGHT.BRIGHT) {
-        return {
-            text: t('light_bright'),
-            class: 'bright',
-            color: '#f59e0b'
-        };
+        return { text: t('light_bright'), class: 'bright' };
     } else {
-        return {
-            text: t('light_very_bright'),
-            class: 'very_bright',
-            color: '#ea580c'
-        };
+        return { text: t('light_very_bright'), class: 'very_bright' };
     }
 }
 
 // ===== DOOR STATUS FUNCTIONS =====
 function getDoorStatus(distance) {
     if (distance === null || distance === -1) {
-        return {
-            text: t('door_sensor_error'),
-            class: 'error',
-            color: '#64748b',
-            icon: '⚠️'
-        };
+        return { text: t('door_sensor_error'), class: 'error' };
     }
     
     if (distance >= CONFIG.DOOR.MIN_CLOSED && distance <= CONFIG.DOOR.MAX_CLOSED) {
-        return {
-            text: t('door_closed'),
-            class: 'closed',
-            color: '#10b981',
-            icon: '🚪'
-        };
+        return { text: t('door_closed'), class: 'closed' };
     } else {
-        return {
-            text: t('door_open'),
-            class: 'open',
-            color: '#ef4444',
-            icon: '🔓'
-        };
+        return { text: t('door_open'), class: 'open' };
     }
 }
 
-// ===== FIREBASE CONNECTION MANAGEMENT =====
+// ===== FIREBASE CONNECTION =====
 function initializeFirebaseListeners() {
     logMessage('🔥 Initializing Firebase listeners...', 'info');
     
     const basePath = `/Users/${CONFIG.USER_UID}`;
     
-    // Live data listeners for real-time display
-    DASHBOARD_STATE.firebaseRefs.temperature = database.ref(`${basePath}/temperature`);
-    DASHBOARD_STATE.firebaseRefs.temperature.on('value', (snapshot) => {
+    // Temperature listener
+    database.ref(`${basePath}/temperature`).on('value', (snapshot) => {
         const value = snapshot.val();
         if (value !== null) {
             DASHBOARD_STATE.sensorData.temperature = parseFloat(value);
             updateConnectionStatus('connected');
-            logMessage(`🌡️ Temperature updated: ${value}°C`, 'success');
-            processSensorData();
-            saveDataToStorage();
+            logMessage(`🌡️ Temperature: ${value}°C`, 'success');
+            updateTemperatureCard();
+            updateDailyStats('temperature', value);
+            addToChart('temperature', value);
+            processOfflineData(); // Process any offline data when connection is restored
         }
     }, (error) => {
-        logMessage(`Temperature listener error: ${error.message}`, 'error');
+        logMessage(`Temperature error: ${error.message}`, 'error');
         updateConnectionStatus('disconnected');
+        if (DASHBOARD_STATE.sensorData.temperature !== null) {
+            storeOfflineData('temperature', DASHBOARD_STATE.sensorData.temperature);
+        }
     });
 
-    DASHBOARD_STATE.firebaseRefs.humidity = database.ref(`${basePath}/humidity`);
-    DASHBOARD_STATE.firebaseRefs.humidity.on('value', (snapshot) => {
+    // Humidity listener
+    database.ref(`${basePath}/humidity`).on('value', (snapshot) => {
         const value = snapshot.val();
         if (value !== null) {
             DASHBOARD_STATE.sensorData.humidity = parseFloat(value);
             updateConnectionStatus('connected');
-            logMessage(`💧 Humidity updated: ${value}%`, 'success');
-            processSensorData();
-            saveDataToStorage();
+            logMessage(`💧 Humidity: ${value}%`, 'success');
+            updateHumidityCard();
+            updateDailyStats('humidity', value);
+            addToChart('humidity', value);
         }
     }, (error) => {
-        logMessage(`Humidity listener error: ${error.message}`, 'error');
+        logMessage(`Humidity error: ${error.message}`, 'error');
         updateConnectionStatus('disconnected');
+        if (DASHBOARD_STATE.sensorData.humidity !== null) {
+            storeOfflineData('humidity', DASHBOARD_STATE.sensorData.humidity);
+        }
     });
 
-    DASHBOARD_STATE.firebaseRefs.ldr = database.ref(`${basePath}/ldr`);
-    DASHBOARD_STATE.firebaseRefs.ldr.on('value', (snapshot) => {
+    // Light listener
+    database.ref(`${basePath}/ldr`).on('value', (snapshot) => {
         const value = snapshot.val();
         if (value !== null) {
             DASHBOARD_STATE.sensorData.ldr = parseInt(value);
             updateConnectionStatus('connected');
-            logMessage(`💡 Light updated: ${value}`, 'success');
-            processSensorData();
-            saveDataToStorage();
+            logMessage(`💡 Light: ${value}`, 'success');
+            updateLightCard();
+            updateDailyStats('light', value);
+            addToChart('light', value);
         }
     }, (error) => {
-        logMessage(`LDR listener error: ${error.message}`, 'error');
+        logMessage(`Light error: ${error.message}`, 'error');
         updateConnectionStatus('disconnected');
+        if (DASHBOARD_STATE.sensorData.ldr !== null) {
+            storeOfflineData('light', DASHBOARD_STATE.sensorData.ldr);
+        }
     });
 
-    DASHBOARD_STATE.firebaseRefs.distance = database.ref(`${basePath}/distance_cm`);
-    DASHBOARD_STATE.firebaseRefs.distance.on('value', (snapshot) => {
+    // Distance listener
+    database.ref(`${basePath}/distance_cm`).on('value', (snapshot) => {
         const value = snapshot.val();
         if (value !== null) {
             DASHBOARD_STATE.sensorData.distance_cm = parseInt(value);
             updateConnectionStatus('connected');
-            logMessage(`📏 Distance updated: ${value}cm`, 'success');
-            processSensorData();
-            saveDataToStorage();
+            logMessage(`📏 Distance: ${value}cm`, 'success');
+            updateDoorCard();
+            
+            const doorStatus = getDoorStatus(value);
+            const doorValue = doorStatus.class === 'open' ? 1 : doorStatus.class === 'closed' ? 0 : 0.5;
+            
+            if (DASHBOARD_STATE.lastDoorState !== doorStatus.class) {
+                addToChart('door', doorValue);
+                
+                if (doorStatus.class === 'open' && DASHBOARD_STATE.lastDoorState === 'closed') {
+                    DASHBOARD_STATE.dailyStats.door.openCount++;
+                } else if (doorStatus.class === 'closed' && DASHBOARD_STATE.lastDoorState === 'open') {
+                    DASHBOARD_STATE.dailyStats.door.closeCount++;
+                }
+                
+                DASHBOARD_STATE.lastDoorState = doorStatus.class;
+                
+                if (DASHBOARD_STATE.previousSensorData.distance_cm !== null) {
+                    const eventMessage = doorStatus.class === 'open' ? 'تم فتح الباب' : 
+                                       doorStatus.class === 'closed' ? 'تم إغلاق الباب' : 'خطأ في حساس الباب';
+                    checkForEvent('door', doorStatus.class === 'open' && DASHBOARD_STATE.currentMode === 'security' ? 'high' : 'medium', eventMessage);
+                }
+                
+                updateDailyStatsDisplay();
+                saveDailyStats();
+            }
         }
     }, (error) => {
-        logMessage(`Distance listener error: ${error.message}`, 'error');
+        logMessage(`Distance error: ${error.message}`, 'error');
         updateConnectionStatus('disconnected');
-    });
-
-    // Historical data listener for charts
-    DASHBOARD_STATE.firebaseRefs.readings = database.ref(`${basePath}/readings`);
-    DASHBOARD_STATE.firebaseRefs.readings.limitToLast(CONFIG.CHART_MAX_POINTS).on('value', (snapshot) => {
-        const readings = snapshot.val();
-        if (readings) {
-            updateHistoricalData(readings);
-            renderCharts();
-            saveDataToStorage();
-            logMessage('📊 Historical data updated for charts', 'success');
+        if (DASHBOARD_STATE.sensorData.distance_cm !== null) {
+            storeOfflineData('door', DASHBOARD_STATE.sensorData.distance_cm);
         }
-    }, (error) => {
-        logMessage(`Historical data listener error: ${error.message}`, 'error');
     });
 
     // Connection state listener
-    const connectedRef = database.ref('.info/connected');
-    connectedRef.on('value', (snapshot) => {
+    database.ref('.info/connected').on('value', (snapshot) => {
         if (snapshot.val() === true) {
             updateConnectionStatus('connected');
             logMessage('🔗 Firebase connected', 'success');
@@ -481,45 +450,8 @@ function initializeFirebaseListeners() {
     });
 }
 
-function updateHistoricalData(readings) {
-    const tempData = [];
-    const humidityData = [];
-    const lightData = [];
-    const doorData = [];
-    
-    Object.keys(readings).sort().forEach(timestamp => {
-        const reading = readings[timestamp];
-        const time = new Date(parseInt(timestamp) * 1000);
-        
-        if (reading.temperature !== undefined) {
-            tempData.push({ value: reading.temperature, timestamp: time });
-        }
-        if (reading.humidity !== undefined) {
-            humidityData.push({ value: reading.humidity, timestamp: time });
-        }
-        if (reading.ldr !== undefined) {
-            lightData.push({ value: reading.ldr, timestamp: time });
-        }
-        if (reading.distance_cm !== undefined) {
-            const doorStatus = getDoorStatus(reading.distance_cm);
-            // Simplified door chart: only show open (1) or closed (0)
-            const doorValue = doorStatus.class === 'open' ? 1 : doorStatus.class === 'closed' ? 0 : 0.5;
-            doorData.push({ value: doorValue, timestamp: time });
-        }
-    });
-    
-    DASHBOARD_STATE.historicalData = {
-        temperature: tempData,
-        humidity: humidityData,
-        light: lightData,
-        door: doorData
-    };
-}
-
 function updateConnectionStatus(status) {
-    DASHBOARD_STATE.connectionStatus = status;
     DASHBOARD_STATE.isConnected = status === 'connected';
-    DASHBOARD_STATE.lastDataUpdate = new Date();
     
     const statusIndicator = document.getElementById('statusIndicator');
     const statusText = document.getElementById('statusText');
@@ -529,121 +461,51 @@ function updateConnectionStatus(status) {
         statusText.textContent = t(status);
     }
     
-    // Update all live indicators across all sensor cards
     updateLiveIndicators();
-    updateAllSensorCards();
 }
 
-// ===== SENSOR DATA PROCESSING =====
-function processSensorData() {
-    const currentData = DASHBOARD_STATE.sensorData;
-    const previousData = DASHBOARD_STATE.previousSensorData;
+// ===== DAILY STATS FUNCTIONS =====
+function updateDailyStats(type, value) {
+    const numValue = parseFloat(value);
     
-    // Check for significant changes and create events
-    checkForSensorEvents(currentData, previousData);
+    if (type === 'temperature' || type === 'humidity' || type === 'light') {
+        if (DASHBOARD_STATE.dailyStats[type].max === null || numValue > DASHBOARD_STATE.dailyStats[type].max) {
+            DASHBOARD_STATE.dailyStats[type].max = numValue;
+        }
+        if (DASHBOARD_STATE.dailyStats[type].min === null || numValue < DASHBOARD_STATE.dailyStats[type].min) {
+            DASHBOARD_STATE.dailyStats[type].min = numValue;
+        }
+    }
     
-    // Update previous data
-    DASHBOARD_STATE.previousSensorData = { ...currentData };
-    
-    // Update UI
-    updateAllSensorCards();
+    updateDailyStatsDisplay();
+    saveDailyStats();
 }
 
-function checkForSensorEvents(current, previous) {
-    const now = new Date();
+function updateDailyStatsDisplay() {
+    // Temperature stats
+    const tempMax = DASHBOARD_STATE.dailyStats.temperature.max;
+    const tempMin = DASHBOARD_STATE.dailyStats.temperature.min;
+    updateElement('tempMaxValue', tempMax !== null ? `${formatNumber(tempMax)}${t('celsius')}` : '--');
+    updateElement('tempMinValue', tempMin !== null ? `${formatNumber(tempMin)}${t('celsius')}` : '--');
     
-    // Temperature events
-    if (previous.temperature !== null && current.temperature !== null) {
-        const tempDiff = Math.abs(current.temperature - previous.temperature);
-        if (tempDiff > 3) {
-            createEvent({
-                type: 'temperature',
-                message: current.temperature > CONFIG.TEMPERATURE.HIGH ? t('temp_high') : 
-                         current.temperature < CONFIG.TEMPERATURE.LOW ? t('temp_low') : 
-                         `${t('temperature')}: ${current.temperature.toFixed(1)}${t('celsius')}`,
-                timestamp: now,
-                severity: current.temperature > CONFIG.TEMPERATURE.HIGH || current.temperature < CONFIG.TEMPERATURE.LOW ? 'high' : 'medium',
-                icon: '🌡️'
-            });
-        }
-    }
+    // Humidity stats
+    const humidityMax = DASHBOARD_STATE.dailyStats.humidity.max;
+    const humidityMin = DASHBOARD_STATE.dailyStats.humidity.min;
+    updateElement('humidityMaxValue', humidityMax !== null ? `${formatNumber(humidityMax)}${t('percent')}` : '--');
+    updateElement('humidityMinValue', humidityMin !== null ? `${formatNumber(humidityMin)}${t('percent')}` : '--');
     
-    // Humidity events
-    if (previous.humidity !== null && current.humidity !== null) {
-        const humidityDiff = Math.abs(current.humidity - previous.humidity);
-        if (humidityDiff > 15) {
-            createEvent({
-                type: 'humidity',
-                message: current.humidity > CONFIG.HUMIDITY.HIGH ? t('humidity_high') : 
-                         current.humidity < CONFIG.HUMIDITY.LOW ? t('humidity_low') : 
-                         `${t('humidity')}: ${current.humidity.toFixed(1)}${t('percent')}`,
-                timestamp: now,
-                severity: current.humidity > CONFIG.HUMIDITY.HIGH ? 'high' : 'medium',
-                icon: '💧'
-            });
-        }
-    }
+    // Light stats
+    const lightMax = DASHBOARD_STATE.dailyStats.light.max;
+    const lightMin = DASHBOARD_STATE.dailyStats.light.min;
+    updateElement('lightMaxValue', lightMax !== null ? formatInteger(Math.round(lightMax)) : '--');
+    updateElement('lightMinValue', lightMin !== null ? formatInteger(Math.round(lightMin)) : '--');
     
-    // Light events
-    if (previous.ldr !== null && current.ldr !== null) {
-        const lightDiff = Math.abs(current.ldr - previous.ldr);
-        if (lightDiff > 200) {
-            const lightLevel = getLightLevel(current.ldr);
-            createEvent({
-                type: 'light',
-                message: `${t('light_changed')}: ${lightLevel.text}`,
-                timestamp: now,
-                severity: 'low',
-                icon: '💡'
-            });
-        }
-    }
-    
-    // Door events
-    if (previous.distance_cm !== null && current.distance_cm !== null) {
-        const prevDoorStatus = getDoorStatus(previous.distance_cm);
-        const currentDoorStatus = getDoorStatus(current.distance_cm);
-        
-        if (prevDoorStatus.class !== currentDoorStatus.class) {
-            const severity = currentDoorStatus.class === 'open' && DASHBOARD_STATE.currentMode === 'security' ? 'high' : 'medium';
-            
-            createEvent({
-                type: 'door',
-                message: currentDoorStatus.class === 'open' ? t('door_opened') : 
-                         currentDoorStatus.class === 'closed' ? t('door_closed_event') : 
-                         t('door_sensor_error'),
-                timestamp: now,
-                severity: severity,
-                icon: currentDoorStatus.icon
-            });
-        }
-    }
+    // Door stats
+    updateElement('doorOpenCount', `${formatInteger(DASHBOARD_STATE.dailyStats.door.openCount)} ${t('times')}`);
+    updateElement('doorCloseCount', `${formatInteger(DASHBOARD_STATE.dailyStats.door.closeCount)} ${t('times')}`);
 }
 
 // ===== SENSOR CARD UPDATES =====
-function updateAllSensorCards() {
-    updateTemperatureCard();
-    updateHumidityCard();
-    updateLightCard();
-    updateDoorCard();
-}
-
-function updateLiveIndicators() {
-    const liveTexts = ['tempLiveText', 'humidityLiveText', 'lightLiveText', 'doorLiveText'];
-    const pulseDots = ['tempPulseDot', 'humidityPulseDot', 'lightPulseDot', 'doorPulseDot'];
-    
-    liveTexts.forEach(id => {
-        updateElement(id, DASHBOARD_STATE.isConnected ? t('live') : t('offline'));
-    });
-    
-    pulseDots.forEach(id => {
-        const element = document.getElementById(id);
-        if (element) {
-            element.className = DASHBOARD_STATE.isConnected ? 'pulse-dot' : 'pulse-dot offline';
-        }
-    });
-}
-
 function updateTemperatureCard() {
     const card = document.getElementById('temperatureCard');
     const value = document.getElementById('temperatureValue');
@@ -656,7 +518,7 @@ function updateTemperatureCard() {
         return;
     }
     
-    value.textContent = `${temp.toFixed(1)}${t('celsius')}`;
+    value.textContent = `${formatNumber(temp)}${t('celsius')}`;
     
     card.className = 'sensor-card';
     value.className = 'sensor-value';
@@ -664,9 +526,11 @@ function updateTemperatureCard() {
     if (temp > CONFIG.TEMPERATURE.HIGH) {
         card.classList.add('danger');
         value.classList.add('danger');
+        checkForEvent('temperature', 'high', `درجة حرارة مرتفعة: ${formatNumber(temp)}${t('celsius')}`);
     } else if (temp < CONFIG.TEMPERATURE.LOW) {
         card.classList.add('warning');
         value.classList.add('warning');
+        checkForEvent('temperature', 'low', `درجة حرارة منخفضة: ${formatNumber(temp)}${t('celsius')}`);
     } else {
         card.classList.add('normal');
         value.classList.add('normal');
@@ -685,7 +549,7 @@ function updateHumidityCard() {
         return;
     }
     
-    value.textContent = `${humidity.toFixed(1)}${t('percent')}`;
+    value.textContent = `${formatNumber(humidity)}${t('percent')}`;
     
     card.className = 'sensor-card';
     value.className = 'sensor-value';
@@ -693,9 +557,16 @@ function updateHumidityCard() {
     if (humidity > CONFIG.HUMIDITY.HIGH) {
         card.classList.add('danger');
         value.classList.add('danger');
+        checkForEvent('humidity', 'high', `رطوبة مرتفعة: ${formatNumber(humidity)}${t('percent')}`);
     } else if (humidity < CONFIG.HUMIDITY.LOW) {
         card.classList.add('warning');
         value.classList.add('warning');
+        // إرسال تنبيه كل 10 دقائق للرطوبة المنخفضة جداً (أقل من 5)
+        const now = Date.now();
+        if (!DASHBOARD_STATE.lastAlertTime.humidity || now - DASHBOARD_STATE.lastAlertTime.humidity > CONFIG.HUMIDITY_ALERT_INTERVAL) {
+            checkForEvent('humidity', 'low', `رطوبة منخفضة جداً: ${formatNumber(humidity)}${t('percent')}`);
+            DASHBOARD_STATE.lastAlertTime.humidity = now;
+        }
     } else {
         card.classList.add('normal');
         value.classList.add('normal');
@@ -715,11 +586,11 @@ function updateLightCard() {
     }
     
     const lightLevel = getLightLevel(light);
-    value.textContent = `${lightLevel.text} (${light})`;
+    const lightNumber = formatInteger(light);
+    value.textContent = `${lightLevel.text} (${lightNumber})`;
     
-    card.className = `sensor-card light-${lightLevel.class}`;
-    value.className = `sensor-value light-${lightLevel.class}`;
-    value.style.color = lightLevel.color;
+    card.className = `sensor-card normal`;
+    value.className = `sensor-value normal`;
 }
 
 function updateDoorCard() {
@@ -738,29 +609,85 @@ function updateDoorCard() {
     const doorStatus = getDoorStatus(distance);
     value.textContent = doorStatus.text;
     
-    card.className = `sensor-card door-${doorStatus.class}`;
-    value.className = `sensor-value door-${doorStatus.class}`;
-    value.style.color = doorStatus.color;
-    
-    // Update icon based on door status
-    if (doorStatus.class === 'closed') {
-        icon.innerHTML = '<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><circle cx="8" cy="14" r="1"/>';
-    } else if (doorStatus.class === 'open') {
-        icon.innerHTML = '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>';
+    // Update door icon based on status
+    if (doorStatus.class === 'open') {
+        icon.innerHTML = `
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8"/>
+            <path d="M22 12h-4"/>
+            <circle cx="18" cy="12" r="1"/>
+        `;
+    } else if (doorStatus.class === 'closed') {
+        icon.innerHTML = `
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/>
+            <circle cx="15" cy="12" r="1"/>
+        `;
     } else {
-        icon.innerHTML = '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>';
+        icon.innerHTML = `
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/>
+            <path d="M12 8v8"/>
+            <path d="M8 12h8"/>
+        `;
+    }
+    
+    card.className = `sensor-card`;
+    value.className = `sensor-value`;
+    
+    if (doorStatus.class === 'open') {
+        card.classList.add('danger');
+        value.classList.add('danger');
+    } else if (doorStatus.class === 'closed') {
+        card.classList.add('normal');
+        value.classList.add('normal');
+    } else {
+        card.classList.add('warning');
+        value.classList.add('warning');
     }
 }
 
-// ===== CHART MANAGEMENT =====
-function renderCharts() {
-    drawChart('temperatureChart', DASHBOARD_STATE.historicalData.temperature, '#ef4444', t('celsius'));
-    drawChart('humidityChart', DASHBOARD_STATE.historicalData.humidity, '#3b82f6', t('percent'));
-    drawChart('lightChart', DASHBOARD_STATE.historicalData.light, '#f59e0b', '');
-    drawChart('doorChart', DASHBOARD_STATE.historicalData.door, '#10b981', '');
+function updateLiveIndicators() {
+    const sensors = ['temp', 'humidity', 'light', 'door'];
+    
+    sensors.forEach(sensor => {
+        const liveText = document.getElementById(`${sensor}LiveText`);
+        const pulseDot = document.getElementById(`${sensor}PulseDot`);
+        
+        if (liveText) {
+            liveText.textContent = DASHBOARD_STATE.isConnected ? t('live') : t('offline');
+        }
+        
+        if (pulseDot) {
+            pulseDot.className = DASHBOARD_STATE.isConnected ? 'pulse-dot' : 'pulse-dot offline';
+        }
+    });
 }
 
-function drawChart(canvasId, data, color, unit) {
+// ===== CHART FUNCTIONS =====
+function addToChart(type, value, timestamp = null) {
+    const now = timestamp || new Date();
+    
+    // Add data point with 5-minute intervals for better daily visualization
+    const lastPoint = DASHBOARD_STATE.chartData[type][DASHBOARD_STATE.chartData[type].length - 1];
+    if (!lastPoint || now - new Date(lastPoint.timestamp) >= 300000) { // 5 minutes
+        DASHBOARD_STATE.chartData[type].push({ value, timestamp: now });
+        
+        // Keep only last points for daily view
+        if (DASHBOARD_STATE.chartData[type].length > CONFIG.CHART_MAX_POINTS) {
+            DASHBOARD_STATE.chartData[type].shift();
+        }
+        
+        // Save to localStorage
+        localStorage.setItem(`chart-${type}`, JSON.stringify(DASHBOARD_STATE.chartData[type]));
+    }
+}
+
+function renderCharts() {
+    drawChart('temperatureChart', DASHBOARD_STATE.chartData.temperature, '#ef4444', t('celsius'), t('temperature'));
+    drawChart('humidityChart', DASHBOARD_STATE.chartData.humidity, '#3b82f6', t('percent'), t('humidity'));
+    drawChart('lightChart', DASHBOARD_STATE.chartData.light, '#f59e0b', '', t('light'));
+    drawChart('doorChart', DASHBOARD_STATE.chartData.door, '#10b981', '', t('door'));
+}
+
+function drawChart(canvasId, data, color, unit, title) {
     const canvas = document.getElementById(canvasId);
     if (!canvas || data.length === 0) return;
     
@@ -774,12 +701,11 @@ function drawChart(canvasId, data, color, unit) {
     
     const width = rect.width;
     const height = rect.height;
-    
-    ctx.clearRect(0, 0, width, height);
-    
-    const padding = CONFIG.CHART_PADDING;
+    const padding = 70; // زيادة المساحة للتسميات
     const chartWidth = width - 2 * padding;
     const chartHeight = height - 2 * padding;
+    
+    ctx.clearRect(0, 0, width, height);
     
     const values = data.map(d => d.value);
     const minValue = Math.min(...values);
@@ -797,24 +723,36 @@ function drawChart(canvasId, data, color, unit) {
     ctx.lineWidth = 1;
     ctx.setLineDash([2, 2]);
     
-    for (let i = 0; i <= CONFIG.CHART_GRID_LINES; i++) {
-        const y = padding + (chartHeight * i) / CONFIG.CHART_GRID_LINES;
+    for (let i = 0; i <= 5; i++) {
+        const y = padding + (chartHeight * i) / 5;
         ctx.beginPath();
         ctx.moveTo(padding, y);
         ctx.lineTo(width - padding, y);
         ctx.stroke();
     }
     
-    const verticalLines = Math.min(10, Math.max(5, Math.floor(chartWidth / 50)));
-    for (let i = 0; i <= verticalLines; i++) {
-        const x = padding + (chartWidth * i) / verticalLines;
-        ctx.beginPath();
-        ctx.moveTo(x, padding);
-        ctx.lineTo(x, height - padding);
-        ctx.stroke();
-    }
-    
     ctx.setLineDash([]);
+    
+    // Draw gradient area under line
+    if (data.length >= 2) {
+        const gradient = ctx.createLinearGradient(0, padding, 0, height - padding);
+        gradient.addColorStop(0, color + '40');
+        gradient.addColorStop(1, color + '10');
+        
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.moveTo(padding, height - padding);
+        
+        data.forEach((point, index) => {
+            const x = padding + (chartWidth * index) / (data.length - 1);
+            const y = padding + chartHeight - ((point.value - minValue) / valueRange) * chartHeight;
+            ctx.lineTo(x, y);
+        });
+        
+        ctx.lineTo(padding + chartWidth, height - padding);
+        ctx.closePath();
+        ctx.fill();
+    }
     
     // Draw data line
     if (data.length >= 2) {
@@ -854,52 +792,164 @@ function drawChart(canvasId, data, color, unit) {
         ctx.stroke();
     });
     
-    // Draw labels
+    // Draw labels with better formatting
     ctx.fillStyle = isDark ? '#cbd5e1' : '#64748b';
-    ctx.font = '12px Cairo, system-ui, sans-serif';
+    ctx.font = `${DASHBOARD_STATE.currentLanguage === 'ar' ? '14px Cairo' : '14px Inter'}, system-ui, sans-serif`;
     
-    for (let i = 0; i <= CONFIG.CHART_GRID_LINES; i++) {
-        const value = minValue + (valueRange * (CONFIG.CHART_GRID_LINES - i)) / CONFIG.CHART_GRID_LINES;
-        const y = padding + (chartHeight * i) / CONFIG.CHART_GRID_LINES;
+    for (let i = 0; i <= 5; i++) {
+        const value = minValue + (valueRange * (5 - i)) / 5;
+        const y = padding + (chartHeight * i) / 5;
         
         ctx.textAlign = DASHBOARD_STATE.currentLanguage === 'ar' ? 'left' : 'right';
-        const labelX = DASHBOARD_STATE.currentLanguage === 'ar' ? width - padding + 10 : padding - 10;
+        const labelX = DASHBOARD_STATE.currentLanguage === 'ar' ? width - padding + 20 : padding - 20;
+        
+        let labelText = '';
         
         if (canvasId === 'doorChart') {
-            // Enhanced door chart labels - only show open/closed
             if (value >= 0.75) {
-                ctx.fillText(t('door_open'), labelX, y + 4);
+                labelText = t('door_open');
             } else if (value <= 0.25) {
-                ctx.fillText(t('door_closed'), labelX, y + 4);
+                labelText = t('door_closed');
             }
-        } else if (canvasId === 'lightChart') {
-            ctx.fillText(`${Math.round(value)}`, labelX, y + 4);
         } else {
-            ctx.fillText(`${value.toFixed(1)}${unit}`, labelX, y + 4);
+            const formattedValue = formatNumber(value);
+            labelText = `${formattedValue}${unit}`;
+        }
+        
+        if (labelText) {
+            ctx.fillText(labelText, labelX, y + 4);
         }
     }
+    
+    // Add mouse event listeners for tooltip
+    canvas.onmousemove = (event) => {
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = event.clientX - rect.left;
+        const mouseY = event.clientY - rect.top;
+        
+        // Check if mouse is over a data point
+        let foundPoint = null;
+        data.forEach((point, index) => {
+            const x = padding + (chartWidth * index) / (data.length - 1);
+            const y = padding + chartHeight - ((point.value - minValue) / valueRange) * chartHeight;
+            
+            const distance = Math.sqrt(Math.pow(mouseX - x, 2) + Math.pow(mouseY - y, 2));
+            if (distance <= 10) {
+                foundPoint = { point, x: event.clientX, y: event.clientY };
+            }
+        });
+        
+        if (foundPoint) {
+            canvas.style.cursor = 'pointer';
+            let displayValue;
+            
+            if (canvasId === 'doorChart') {
+                displayValue = foundPoint.point.value >= 0.75 ? t('door_open') : 
+                              foundPoint.point.value <= 0.25 ? t('door_closed') : t('door_sensor_error');
+            } else if (canvasId === 'lightChart') {
+                const lightLevel = getLightLevel(foundPoint.point.value);
+                displayValue = `${lightLevel.text} (${formatInteger(Math.round(foundPoint.point.value))})`;
+            } else {
+                displayValue = `${formatNumber(foundPoint.point.value)}${unit}`;
+            }
+            
+            showTooltip(foundPoint.x, foundPoint.y, title, displayValue, foundPoint.point.timestamp);
+        } else {
+            canvas.style.cursor = 'default';
+            hideTooltip();
+        }
+    };
+    
+    canvas.onmouseleave = () => {
+        hideTooltip();
+        canvas.style.cursor = 'default';
+    };
+}
+
+// ===== TOOLTIP FUNCTIONS =====
+function showTooltip(x, y, title, value, time) {
+    const tooltip = document.getElementById('chartTooltip');
+    const titleEl = document.getElementById('tooltipTitle');
+    const valueEl = document.getElementById('tooltipValue');
+    const timeEl = document.getElementById('tooltipTime');
+    
+    titleEl.textContent = title;
+    valueEl.textContent = value;
+    timeEl.textContent = `${t('at_time')} ${formatDateTime(time)}`;
+    
+    tooltip.style.left = `${x + 10}px`;
+    tooltip.style.top = `${y - 10}px`;
+    tooltip.classList.remove('hidden');
+}
+
+function hideTooltip() {
+    const tooltip = document.getElementById('chartTooltip');
+    tooltip.classList.add('hidden');
 }
 
 // ===== EVENT MANAGEMENT =====
-function createEvent(eventData) {
+function checkForEvent(type, severity, message) {
+    const now = new Date();
+    const lastEvent = DASHBOARD_STATE.events[0];
+    
+    // Avoid duplicate events within 30 seconds
+    if (lastEvent && lastEvent.type === type && lastEvent.severity === severity && 
+        now - new Date(lastEvent.timestamp) < 30000) {
+        return;
+    }
+    
     const event = {
-        id: Date.now().toString() + '_' + Math.random().toString(36).substr(2, 9),
-        ...eventData
+        id: Date.now().toString(),
+        type,
+        message,
+        timestamp: now,
+        severity,
+        icon: getEventIcon(type)
     };
     
     DASHBOARD_STATE.events.unshift(event);
-    DASHBOARD_STATE.events = DASHBOARD_STATE.events.slice(0, CONFIG.MAX_EVENTS);
+    DASHBOARD_STATE.events = DASHBOARD_STATE.events.slice(0, 50);
     
-    if (DASHBOARD_STATE.currentMode === 'security' && event.severity === 'high') {
+    if (DASHBOARD_STATE.currentMode === 'security' && severity === 'high') {
         DASHBOARD_STATE.alerts.unshift(event);
-        showAlertBanner(event.message);
+        showAlertBanner(message);
     }
     
     updateEventsDisplay();
     updateAlertsDisplay();
-    saveDataToStorage();
     
-    logMessage(`📝 Event created: ${event.message}`, 'info');
+    // Save to localStorage
+    localStorage.setItem('dashboard-events', JSON.stringify(DASHBOARD_STATE.events));
+    localStorage.setItem('dashboard-alerts', JSON.stringify(DASHBOARD_STATE.alerts));
+    
+    logMessage(`📝 Event: ${message}`, 'info');
+}
+
+function getEventIcon(type) {
+    const icons = {
+        temperature: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/>
+                      </svg>`,
+        humidity: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                     <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+                   </svg>`,
+        light: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="5"/>
+                  <line x1="12" y1="1" x2="12" y2="3"/>
+                  <line x1="12" y1="21" x2="12" y2="23"/>
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                  <line x1="1" y1="12" x2="3" y2="12"/>
+                  <line x1="21" y1="12" x2="23" y2="12"/>
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                </svg>`,
+        door: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/>
+                 <circle cx="15" cy="12" r="1"/>
+               </svg>`
+    };
+    return icons[type] || icons.door;
 }
 
 function showAlertBanner(message) {
@@ -911,7 +961,7 @@ function showAlertBanner(message) {
     
     setTimeout(() => {
         banner.classList.add('hidden');
-    }, CONFIG.ALERT_AUTO_HIDE_DELAY);
+    }, 5000);
 }
 
 function updateEventsDisplay() {
@@ -922,14 +972,13 @@ function updateEventsDisplay() {
         return;
     }
     
-    eventsList.innerHTML = DASHBOARD_STATE.events.map(event => `
+    eventsList.innerHTML = DASHBOARD_STATE.events.slice(0, 10).map(event => `
         <div class="event-item">
-            <span class="event-icon">${event.icon}</span>
+            <div class="event-icon">${event.icon}</div>
             <div class="event-content">
                 <div class="event-message">${event.message}</div>
-                <div class="event-time">${formatTime(event.timestamp)}</div>
+                <div class="event-time">${formatDateTime(new Date(event.timestamp))}</div>
             </div>
-            <span class="severity-badge severity-${event.severity}">${t(event.severity)}</span>
         </div>
     `).join('');
 }
@@ -948,41 +997,60 @@ function updateAlertsDisplay() {
     
     alertsList.innerHTML = DASHBOARD_STATE.alerts.map(alert => `
         <div class="alert-item">
-            <span class="event-icon">${alert.icon}</span>
+            <div class="event-icon">${alert.icon}</div>
             <div class="event-content">
                 <div class="event-message">${alert.message}</div>
-                <div class="event-time">${formatTime(alert.timestamp)}</div>
+                <div class="event-time">${formatDateTime(new Date(alert.timestamp))}</div>
             </div>
-            <button onclick="clearAlert('${alert.id}')" class="close-alert" title="إزالة التنبيه">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="18" y1="6" x2="6" y2="18"/>
-                    <line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-            </button>
         </div>
     `).join('');
-}
-
-function clearAlert(alertId) {
-    DASHBOARD_STATE.alerts = DASHBOARD_STATE.alerts.filter(alert => alert.id !== alertId);
-    updateAlertsDisplay();
-    saveDataToStorage();
-    logMessage(`🗑️ Alert cleared: ${alertId}`, 'info');
 }
 
 function clearAllAlerts() {
     DASHBOARD_STATE.alerts = [];
     updateAlertsDisplay();
-    saveDataToStorage();
+    localStorage.setItem('dashboard-alerts', JSON.stringify(DASHBOARD_STATE.alerts));
     logMessage('🗑️ All alerts cleared', 'info');
 }
 
 // ===== MAIN APPLICATION =====
 function initDashboard() {
-    logMessage('🚀 Initializing Smart Room Dashboard with Firebase...', 'info');
+    logMessage('🚀 Initializing Dashboard...', 'info');
     
-    // Load saved data first
-    loadDataFromStorage();
+    // Check for daily reset
+    checkDailyReset();
+    
+    // Load saved chart data
+    Object.keys(DASHBOARD_STATE.chartData).forEach(key => {
+        const saved = localStorage.getItem(`chart-${key}`);
+        if (saved) {
+            DASHBOARD_STATE.chartData[key] = JSON.parse(saved).map(item => ({
+                ...item,
+                timestamp: new Date(item.timestamp)
+            }));
+        }
+    });
+    
+    // Load saved events
+    const savedEvents = localStorage.getItem('dashboard-events');
+    if (savedEvents) {
+        DASHBOARD_STATE.events = JSON.parse(savedEvents).map(event => ({
+            ...event,
+            timestamp: new Date(event.timestamp)
+        }));
+    }
+    
+    // Load saved alerts
+    const savedAlerts = localStorage.getItem('dashboard-alerts');
+    if (savedAlerts) {
+        DASHBOARD_STATE.alerts = JSON.parse(savedAlerts).map(alert => ({
+            ...alert,
+            timestamp: new Date(alert.timestamp)
+        }));
+    }
+    
+    // Load daily stats
+    loadDailyStats();
     
     applyLanguage();
     applyTheme();
@@ -990,7 +1058,10 @@ function initDashboard() {
     
     updateClock();
     updateAllSensorCards();
+    updateDailyStatsDisplay();
     renderCharts();
+    updateEventsDisplay();
+    updateAlertsDisplay();
     
     initializeFirebaseListeners();
     startIntervals();
@@ -1002,15 +1073,29 @@ function initDashboard() {
 function startIntervals() {
     clearIntervals();
     
-    DASHBOARD_STATE.intervals.clock = setInterval(updateClock, CONFIG.CLOCK_UPDATE_INTERVAL);
+    DASHBOARD_STATE.intervals.clock = setInterval(updateClock, CONFIG.UPDATE_INTERVAL);
     DASHBOARD_STATE.intervals.charts = setInterval(renderCharts, CONFIG.CHART_UPDATE_INTERVAL);
-    DASHBOARD_STATE.intervals.dataSave = setInterval(saveDataToStorage, 30000); // Save every 30 seconds
+    DASHBOARD_STATE.intervals.save = setInterval(saveDataToStorage, CONFIG.SAVE_INTERVAL);
+    DASHBOARD_STATE.intervals.dailyReset = setInterval(checkDailyReset, 60000); // Check every minute
 }
 
 function clearIntervals() {
     Object.values(DASHBOARD_STATE.intervals).forEach(interval => {
         if (interval) clearInterval(interval);
     });
+}
+
+function saveDataToStorage() {
+    try {
+        localStorage.setItem('dashboard-events', JSON.stringify(DASHBOARD_STATE.events));
+        localStorage.setItem('dashboard-alerts', JSON.stringify(DASHBOARD_STATE.alerts));
+        saveDailyStats();
+        Object.keys(DASHBOARD_STATE.chartData).forEach(key => {
+            localStorage.setItem(`chart-${key}`, JSON.stringify(DASHBOARD_STATE.chartData[key]));
+        });
+    } catch (error) {
+        logMessage(`Storage error: ${error.message}`, 'error');
+    }
 }
 
 function updateClock() {
@@ -1028,13 +1113,20 @@ function updateClock() {
     updateElement('digitalClock', timeString);
 }
 
+function updateAllSensorCards() {
+    updateTemperatureCard();
+    updateHumidityCard();
+    updateLightCard();
+    updateDoorCard();
+}
+
 function applyLanguage() {
     document.documentElement.lang = DASHBOARD_STATE.currentLanguage;
     document.documentElement.dir = DASHBOARD_STATE.currentLanguage === 'ar' ? 'rtl' : 'ltr';
     
     updateTranslatableElements();
     
-    localStorage.setItem(CONFIG.STORAGE_KEYS.LANGUAGE, DASHBOARD_STATE.currentLanguage);
+    localStorage.setItem('dashboard-language', DASHBOARD_STATE.currentLanguage);
 }
 
 function updateTranslatableElements() {
@@ -1050,6 +1142,16 @@ function updateTranslatableElements() {
     updateElement('lightTitle', t('light'));
     updateElement('doorTitle', t('door'));
     
+    // Stats labels
+    updateElement('tempMaxLabel', t('max_label'));
+    updateElement('tempMinLabel', t('min_label'));
+    updateElement('humidityMaxLabel', t('max_label'));
+    updateElement('humidityMinLabel', t('min_label'));
+    updateElement('lightMaxLabel', t('max_label'));
+    updateElement('lightMinLabel', t('min_label'));
+    updateElement('doorOpenLabel', t('open_count'));
+    updateElement('doorCloseLabel', t('close_count'));
+    
     updateElement('eventsLogTitle', t('events_log'));
     updateElement('alertsTitle', t('security_alert'));
     updateElement('clearAllAlerts', t('clear_alerts'));
@@ -1063,6 +1165,7 @@ function updateTranslatableElements() {
     updateModeStatus();
     updateLiveIndicators();
     updateAllSensorCards();
+    updateDailyStatsDisplay();
     updateEventsDisplay();
     updateAlertsDisplay();
 }
@@ -1081,7 +1184,7 @@ function applyTheme() {
     
     setTimeout(renderCharts, 100);
     
-    localStorage.setItem(CONFIG.STORAGE_KEYS.THEME, DASHBOARD_STATE.currentTheme);
+    localStorage.setItem('dashboard-theme', DASHBOARD_STATE.currentTheme);
 }
 
 function applyMode() {
@@ -1107,13 +1210,11 @@ function applyMode() {
     
     updateModeStatus();
     
-    localStorage.setItem(CONFIG.STORAGE_KEYS.MODE, DASHBOARD_STATE.currentMode);
+    localStorage.setItem('dashboard-mode', DASHBOARD_STATE.currentMode);
 }
 
 function updateModeStatus() {
-    const statusText = DASHBOARD_STATE.currentMode === 'security' ? 
-        t('security_status') : t('normal_status');
-    
+    const statusText = DASHBOARD_STATE.currentMode === 'security' ? t('security_status') : t('normal_status');
     updateElement('modeStatusText', statusText);
 }
 
@@ -1166,74 +1267,22 @@ function setupEventListeners() {
         clearAllAlertsBtn.addEventListener('click', clearAllAlerts);
     }
     
-    document.addEventListener('keydown', handleKeyboardShortcuts);
-    window.addEventListener('beforeunload', cleanup);
-    window.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeunload', () => {
+        clearIntervals();
+        saveDataToStorage();
+    });
+    
     window.addEventListener('resize', () => {
         setTimeout(renderCharts, 100);
     });
 }
 
-function handleKeyboardShortcuts(event) {
-    if (event.altKey && event.key === 'l') {
-        event.preventDefault();
-        document.getElementById('languageToggle')?.click();
-    }
-    
-    if (event.altKey && event.key === 't') {
-        event.preventDefault();
-        document.getElementById('themeToggle')?.click();
-    }
-    
-    if (event.altKey && event.key === 'm') {
-        event.preventDefault();
-        const currentBtn = DASHBOARD_STATE.currentMode === 'normal' ? 
-            document.getElementById('securityMode') : 
-            document.getElementById('normalMode');
-        currentBtn?.click();
-    }
-    
-    if (event.key === 'Escape') {
-        document.getElementById('alertBanner')?.classList.add('hidden');
-    }
-}
-
-function handleVisibilityChange() {
-    if (document.hidden) {
-        clearIntervals();
-        logMessage('📱 Dashboard hidden - pausing updates', 'info');
-    } else {
-        startIntervals();
-        logMessage('📱 Dashboard visible - resuming updates', 'info');
-    }
-}
-
-function cleanup() {
-    clearIntervals();
-    saveDataToStorage();
-    
-    Object.values(DASHBOARD_STATE.firebaseRefs).forEach(ref => {
-        if (ref) ref.off();
-    });
-    
-    logMessage('🧹 Dashboard cleanup completed', 'info');
-}
-
 // ===== GLOBAL FUNCTIONS =====
-window.clearAlert = clearAlert;
 window.clearAllAlerts = clearAllAlerts;
 
 // ===== ERROR HANDLING =====
 window.addEventListener('error', (event) => {
     logMessage(`Dashboard Error: ${event.error.message}`, 'error');
-    
-    setTimeout(() => {
-        try {
-            initDashboard();
-        } catch (e) {
-            logMessage(`Failed to recover: ${e.message}`, 'error');
-        }
-    }, 1000);
 });
 
 // ===== INITIALIZATION =====
