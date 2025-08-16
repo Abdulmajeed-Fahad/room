@@ -31,6 +31,20 @@ const CONFIG = {
 };
 
 /* ===========================
+    Security & Telegram
+   
+=========================== */
+CONFIG.SECURITY = {
+  // مهلة اعتبار الانقطاع (نبقيها أكثر من CONNECTION_TIMEOUT بمقدار مريح)
+  HEARTBEAT_TIMEOUT_MS: 20000,
+
+
+
+  // منع تكرار التنبيهات خلال هذا الزمن (لكل نوع مستقل)
+  THROTTLE_MS: 15000
+};
+
+/* ===========================
    Translations
 =========================== */
 const TRANSLATIONS = {
@@ -175,9 +189,11 @@ const DASHBOARD_STATE = {
   intervals: { clock: null, charts: null, save: null, connectionCheck: null },
   lastDoorState: null,
   lastLightLevel: null,
-  lastAlertTime: { temperature: null, humidity: null, light: null, door: null },
+  lastAlertTime: { temperature: null, humidity: null, light: null, door: null, connection: null },
   lastResetDate: localStorage.getItem("last-reset-date") || new Date().toDateString(),
   chartNeedsUpdate: { temperature: true, humidity: true, light: true, door: true },
+
+  _connectionWasDisconnected: false,
 };
 
 /* ===========================
@@ -217,6 +233,47 @@ function withAlpha(hex, a=0.5){
 }
 
 /* ===========================
+    Telegram helpers 
+=========================== */
+function telegramThrottle(kind){
+  const now = Date.now();
+  const last = DASHBOARD_STATE.lastAlertTime[kind];
+  if (last && (now - last) < CONFIG.SECURITY.THROTTLE_MS) return true; // ممنوع الآن
+  DASHBOARD_STATE.lastAlertTime[kind] = now;
+  return false;
+}
+
+async function sendTelegram(text){
+  try{
+    const proxy = CONFIG.SECURITY.TELEGRAM.PROXY_URL;
+    if (proxy && proxy !== "https://YOUR-WORKER-URL.workers.dev"){
+      await fetch(proxy, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+      return true;
+    }
+    // إرسال مباشر (للاختبار فقط)
+    const token = CONFIG.SECURITY.TELEGRAM.BOT_TOKEN;
+    const chatId = CONFIG.SECURITY.TELEGRAM.CHAT_ID;
+    if (!token || !chatId){
+      console.warn("Telegram not configured: no PROXY_URL and no BOT_TOKEN/CHAT_ID.");
+      return false;
+    }
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML', disable_notification: false })
+    });
+    return true;
+  }catch(e){
+    console.error("Telegram send failed:", e);
+    return false;
+  }
+}
+
+/* ===========================
    Connection Management
 =========================== */
 function checkConnectionTimeout(){
@@ -226,11 +283,30 @@ function checkConnectionTimeout(){
     DASHBOARD_STATE.lastConnectedData = { ...DASHBOARD_STATE.sensorData };
     updateConnectionStatus("disconnected");
     showLastReadingInfo();
+
+    // 📨 تيليجرام: انقطاع
+    if (!telegramThrottle("connection") && DASHBOARD_STATE.currentMode==="security"){
+      const last = DASHBOARD_STATE.lastConnectedData;
+      const info = `\n🕒 ${formatDateTime(new Date())}\n🌡️ T=${last.temperature}°C  💧H=${last.humidity}%  💡LDR=${last.ldr}  📏D=${last.distance_cm}cm`;
+      sendTelegram(`⚠️ تم رصد <b>انقطاع الاتصال</b> بمصدر القراءات.${info}`);
+    }
+    DASHBOARD_STATE._connectionWasDisconnected = true;
   }
 }
 function resetConnectionTimeout(){
+  const wasDisconnected = !DASHBOARD_STATE.isConnected;
   DASHBOARD_STATE.lastDataUpdate=Date.now();
-  if (!DASHBOARD_STATE.isConnected){ updateConnectionStatus("connected"); hideLastReadingInfo(); }
+  if (!DASHBOARD_STATE.isConnected){
+    updateConnectionStatus("connected");
+    hideLastReadingInfo();
+  }
+  // 📨 تيليجرام: عودة الاتصال (مرّة عند الانتقال فقط)
+  if (wasDisconnected && DASHBOARD_STATE._connectionWasDisconnected && DASHBOARD_STATE.currentMode==="security"){
+    if (!telegramThrottle("connection")){
+      sendTelegram(`✅ <b>تم استعادة الاتصال</b> وعودة تدفق البيانات.\n🕒 ${formatDateTime(new Date())}`);
+    }
+    DASHBOARD_STATE._connectionWasDisconnected = false;
+  }
 }
 function updateConnectionStatus(status){
   DASHBOARD_STATE.isConnected = status==="connected";
@@ -448,12 +524,11 @@ function drawSmoothChart(canvasId, data, color, unit, title){
     ctx.lineWidth=2; ctx.beginPath(); ctx.arc(p.x,p.y,r,0,Math.PI*2); ctx.fill(); ctx.stroke();
   }
 
-  // Y labels على الحافة، محاذاة صحيحة (لا فوق الرسم)
+  // Y labels
   const isAr=DASHBOARD_STATE.currentLanguage==="ar";
   ctx.fillStyle=isDark?"#e2e8f0":"#64748b"; ctx.font="12px Cairo, system-ui, sans-serif";
   ctx.textBaseline="middle";
-  if (isAr){ ctx.textAlign="left"; }
-  else { ctx.textAlign="right"; }
+  ctx.textAlign = isAr ? "left" : "right";
   const labelX = isAr ? (width - padding + 10) : (padding - 10);
   for(let i=0;i<=5;i++){
     const val=minV + (range*(5-i))/5; const y=padding + (chartH*i)/5;
@@ -461,7 +536,7 @@ function drawSmoothChart(canvasId, data, color, unit, title){
     ctx.fillText(label, labelX, y);
   }
 
-  // Tooltip (الإضاءة: حالة فقط)
+  // Tooltip
   canvas.__points=pts;
   canvas.onmousemove=(evt)=>{
     const r=canvas.getBoundingClientRect(); const mx=evt.clientX-r.left;
@@ -475,7 +550,7 @@ function drawSmoothChart(canvasId, data, color, unit, title){
   canvas.onmouseleave=()=>{ hideTooltip(); canvas.style.cursor="default"; };
 }
 
-/* الباب: منحنى سلس + آخر 15 تغيّر مميّز فقط */
+/* الباب */
 function drawDoorChartSmooth(canvasId, data, color, title){
   const canvas=document.getElementById(canvasId); if(!canvas) return;
   const ctx=canvas.getContext("2d");
@@ -521,7 +596,7 @@ function drawDoorChartSmooth(canvasId, data, color, title){
     ctx.stroke();
   }
 
-  // نقاط (لون حسب الحالة)
+  // نقاط
   ctx.strokeStyle=isDark?"#1e293b":"#ffffff";
   for (let i=0;i<pts.length;i++){
     const p=pts[i], isLast=i===pts.length-1, r=isLast?8:5;
@@ -530,12 +605,11 @@ function drawDoorChartSmooth(canvasId, data, color, title){
     ctx.lineWidth=2; ctx.beginPath(); ctx.arc(p.x,p.y,r,0,Math.PI*2); ctx.fill(); ctx.stroke();
   }
 
-  // Y labels على الحافة، محاذاة صحيحة
+  // Y labels
   const isAr=DASHBOARD_STATE.currentLanguage==="ar";
   ctx.fillStyle=isDark?"#e2e8f0":"#64748b"; ctx.font="12px Cairo, system-ui, sans-serif";
   ctx.textBaseline="middle";
-  if (isAr){ ctx.textAlign="left"; }
-  else { ctx.textAlign="right"; }
+  ctx.textAlign = isAr ? "left" : "right";
   const labelX = isAr ? (width - padding + 10) : (padding - 10);
   ctx.fillText(t("door_open"), labelX, topY);
   ctx.fillText(t("door_sensor_error"), labelX, midY);
@@ -579,19 +653,32 @@ function getEventIcon(type){
   };
   return icons[type] || icons.door;
 }
+
 function checkForEvent(type,severity,message){
   const now=new Date(); const last=DASHBOARD_STATE.events[0];
   if (last && last.type===type && last.severity===severity && now-new Date(last.timestamp)<30000) return;
   const event={ id:Date.now().toString(), type, message, timestamp:now, severity, icon:getEventIcon(type) };
   DASHBOARD_STATE.events.unshift(event); DASHBOARD_STATE.events=DASHBOARD_STATE.events.slice(0,50);
 
+  // إذا كنا في وضع الأمان: حول بعض الأحداث إلى "تنبيه أمني" + أرسل تيليجرام
   if (DASHBOARD_STATE.currentMode==="security" && ((type==="light"&&severity==="high")||(type==="door"&&severity==="high"))){
-    DASHBOARD_STATE.alerts.unshift(event); showAlertBanner(message);
+    DASHBOARD_STATE.alerts.unshift(event);
+    showAlertBanner(message);
+
+    // 📨 تيليجرام لهذا الحدث (مع مكبح)
+    if (!telegramThrottle(type)){
+      const s = DASHBOARD_STATE.sensorData;
+      const info = `\n🕒 ${formatDateTime(now)}\n🌡️ T=${s.temperature}°C  💧H=${s.humidity}%  💡LDR=${s.ldr}  📏D=${s.distance_cm}cm`;
+      const prefix = type==="door" ? "🚪" : "💡";
+      sendTelegram(`${prefix} ${message}${info}`);
+    }
   }
+
   updateEventsDisplay(); updateAlertsDisplay();
   localStorage.setItem("dashboard-events", JSON.stringify(DASHBOARD_STATE.events));
   localStorage.setItem("dashboard-alerts", JSON.stringify(DASHBOARD_STATE.alerts));
 }
+
 function showAlertBanner(msg){
   const b=document.getElementById("alertBanner"); document.getElementById("alertMessage").textContent=`${t("security_alert")}: ${msg}`;
   b.classList.remove("hidden"); setTimeout(()=>b.classList.add("hidden"),5000);
@@ -747,8 +834,16 @@ function applyMode(){
   const card=document.getElementById("modeToggleCard"), section=document.getElementById("roomStatusSection"), mstat=document.querySelector(".mode-status");
   if (DASHBOARD_STATE.currentMode==="normal"){ normal?.classList.add("active"); sec?.classList.remove("security-active"); card?.classList.remove("security-mode"); section?.classList.add("hidden"); mstat?.classList.remove("security-status"); }
   else { normal?.classList.remove("active"); sec?.classList.add("security-active"); card?.classList.add("security-mode"); section?.classList.remove("hidden"); mstat?.classList.add("security-status"); }
+
   updateModeStatus();
   localStorage.setItem("dashboard-mode", DASHBOARD_STATE.currentMode);
+
+  // (اختياري) أرسل إشعار عند تفعيل/إلغاء وضع الأمان
+  if (DASHBOARD_STATE.currentMode==="security"){
+    if (!telegramThrottle("connection")) sendTelegram("🛡️ تم <b>تفعيل وضع الأمان</b>.");
+  } else {
+    if (!telegramThrottle("connection")) sendTelegram("🛑 تم <b>إلغاء وضع الأمان</b>.");
+  }
 }
 function updateModeStatus(){ updateElement("modeStatusText", DASHBOARD_STATE.currentMode==="security"?t("security_status"):t("normal_status")); }
 
@@ -762,6 +857,8 @@ function setupEventListeners(){
   document.getElementById("securityMode")?.addEventListener("click", ()=>{ DASHBOARD_STATE.currentMode="security"; applyMode(); });
   document.getElementById("closeAlert")?.addEventListener("click", ()=>document.getElementById("alertBanner")?.classList.add("hidden"));
   document.getElementById("clearAllAlerts")?.addEventListener("click", clearAllAlerts);
+
+
 
   window.addEventListener("beforeunload", ()=>{ clearIntervals(); saveDataToStorage(); });
   window.addEventListener("resize", ()=>{ Object.keys(DASHBOARD_STATE.chartNeedsUpdate).forEach(k=>DASHBOARD_STATE.chartNeedsUpdate[k]=true); setTimeout(renderCharts,100); });
@@ -809,6 +906,15 @@ function initializeFirebaseListeners(){
     const l=parseInt(v); DASHBOARD_STATE.sensorData.ldr=l; resetConnectionTimeout();
     updateLightCard(); updateDailyStats("light", l);
     if (shouldAddToChart("light", l)){ addToChart("light", l); DASHBOARD_STATE.chartNeedsUpdate.light=true; }
+
+    // 📨 حدث تغيّر مستوى الإضاءة → أرسل في وضع الأمان
+    const lvl = getLightLevel(l);
+    if (DASHBOARD_STATE.lastLightLevel && lvl.class !== DASHBOARD_STATE.lastLightLevel.class){
+      const msg = `${t("light_changed")}: ${lvl.text}`;
+      const sev = DASHBOARD_STATE.currentMode==="security" ? "high" : "medium";
+      checkForEvent("light", sev, msg);
+    }
+    DASHBOARD_STATE.lastLightLevel = lvl;
   }, (err)=>{ logMessage(`Light error: ${err.message}`,"error"); updateConnectionStatus("disconnected"); });
 
   database.ref(`${base}/distance_cm`).on("value",(snap)=>{
@@ -821,9 +927,18 @@ function initializeFirebaseListeners(){
       pushDoorChange(doorVal, new Date());
       DASHBOARD_STATE.chartNeedsUpdate.door=true;
 
-      if (st.class==="open" && DASHBOARD_STATE.lastDoorState==="closed"){ DASHBOARD_STATE.dailyStats.door.openCount++; checkForEvent("door", DASHBOARD_STATE.currentMode==="security"?"high":"medium", t("door_opened")); }
-      else if (st.class==="closed" && DASHBOARD_STATE.lastDoorState==="open"){ DASHBOARD_STATE.dailyStats.door.closeCount++; checkForEvent("door","medium", t("door_closed_event")); }
-      else if (st.class==="error"){ checkForEvent("door","warning", t("door_error")); }
+      if (st.class==="open" && DASHBOARD_STATE.lastDoorState==="closed"){ 
+        DASHBOARD_STATE.dailyStats.door.openCount++; 
+        const sev = DASHBOARD_STATE.currentMode==="security" ? "high" : "medium";
+        checkForEvent("door", sev, t("door_opened")); 
+      }
+      else if (st.class==="closed" && DASHBOARD_STATE.lastDoorState==="open"){ 
+        DASHBOARD_STATE.dailyStats.door.closeCount++; 
+        checkForEvent("door","medium", t("door_closed_event")); 
+      }
+      else if (st.class==="error"){ 
+        checkForEvent("door","warning", t("door_error")); 
+      }
 
       DASHBOARD_STATE.lastDoorState=st.class; updateDailyStatsDisplay(); saveDailyStats();
     }
