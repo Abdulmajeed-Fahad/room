@@ -36,10 +36,14 @@ The system uses **Firebase Realtime Database** to fetch sensor data from an ESP3
 
 
 ├── index.html # الهيكل الأساسي للواجهة
-├── styles.css # التنسيقات (Light/Dark mode + Responsive design)
-├── script.js # المنطق الرئيسي (Firebase + Charts + UI)
-└── telegram.js # إرسال التنبيهات إلى Telegram
 
+├── styles.css # التنسيقات (Light/Dark mode + Responsive design)
+
+
+├── script.js # المنطق الرئيسي (Firebase + Charts + UI)
+
+
+└── telegram.js # إرسال التنبيهات إلى Telegram
 
 
 ---
