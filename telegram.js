@@ -1,11 +1,9 @@
-/* telegram.js — إرسال تلقائي لتلغرام (بدون زر) + رسائل مرتّبة سطرًا بسطر */
 
 const TELEGRAM = {
   BOT_TOKEN: "8489434423:AAEadp3ucFIaSFHTu993LuxUbntIsIm-T9g",
   CHAT_ID: "485606744"
 };
 
-// إرسال GET عبر <img> لتجاوز CORS
 function tgSend(text){
   try{
     if(!TELEGRAM.BOT_TOKEN || !TELEGRAM.CHAT_ID) return false;
@@ -35,7 +33,6 @@ function domSnapshot(){
   return {ready,temp,hum,light,door};
 }
 
-// نفس منطق الواجهة: ar = ar-SA (24h), en = en-US (12h)
 function formatNowLikeUI(){
   const lang = (window.DASHBOARD_STATE?.currentLanguage)||"ar";
   const d = new Date();
@@ -44,7 +41,6 @@ function formatNowLikeUI(){
   return `${date} ${time}`;
 }
 
-/* ========= ملخص مرتب سطرًا بسطر ========= */
 function currentSummary(){
   const lang = (window.DASHBOARD_STATE?.currentLanguage)||"ar";
   const L = (lang==="ar")
@@ -52,7 +48,6 @@ function currentSummary(){
     : {temp:"Temperature", hum:"Humidity", light:"Light", door:"Door status", date:"Date/Time"};
 
   try{
-    // نفضّل القيم المعروضة في الواجهة (DOM) لأنها مترجمة وبالوحدات
     const snap = domSnapshot();
     if(snap.ready){
       return [
@@ -64,7 +59,6 @@ function currentSummary(){
       ].join("\n");
     }
 
-    // احتياطي من الحالة إذا DOM لسا ما تحدّث
     const S = window.DASHBOARD_STATE || {};
     const s = (S.isConnected ? S.sensorData : (S.lastConnectedData || S.sensorData)) || {};
     const tFn = (typeof window.t==="function")?window.t:(k)=>k;
@@ -90,14 +84,11 @@ function currentSummary(){
 }
 
 function notifyTG(title, body){
-  // عنوان فقط في السطر الأول، ثم الملخص المرتّب
   const msg = `🔔 <b>${title}</b>${body ? "\n" + body : ""}${currentSummary()}`;
   tgSend(msg);
 }
 
-/* ========= الربط التلقائي ========= */
 
-// باب/إضاءة + أي حدث high
 const __checkForEvent = window.checkForEvent;
 window.checkForEvent = function(type, severity, message){
   const ret = __checkForEvent?.apply(this, arguments);
@@ -109,7 +100,6 @@ window.checkForEvent = function(type, severity, message){
   return ret;
 };
 
-// عناوين محلية بسيطة
 function langTitle(kind){
   const lang = (window.DASHBOARD_STATE?.currentLanguage)||"ar";
   if (lang==="ar"){
@@ -123,7 +113,6 @@ function langTitle(kind){
   }
 }
 
-// انقطاع/عودة اتصال — نؤخر “العودة” 800ms لالتقاط أول قراءات
 const __updateConnectionStatus = window.updateConnectionStatus;
 let __lastConnStatus = null;
 window.updateConnectionStatus = function(status){
@@ -144,7 +133,6 @@ window.updateConnectionStatus = function(status){
   return res;
 };
 
-// تتبّع تغيّر مستوى الإضاءة حتى لو ما انكتب حدث
 const __updateLightCard = window.updateLightCard;
 let __prevLightClass;
 window.updateLightCard = function(){
