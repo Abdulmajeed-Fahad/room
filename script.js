@@ -23,24 +23,24 @@ const CONFIG = {
   HUMIDITY: { HIGH: 70, LOW: 5 },
   LIGHT: { NONE: 500, DIM: 1500, MEDIUM: 2500, BRIGHT: 3500 },
   DOOR: { MIN_CLOSED: 110, MAX_CLOSED: 130 },
-  CHART_MAX_POINTS: 15,
+
+  // نعرض آخر 17 تغيير حقيقي
+  CHART_MAX_POINTS: 17,
+
   UPDATE_INTERVAL: 1000,
   CHART_UPDATE_INTERVAL: 2000,
   SAVE_INTERVAL: 30000,
   CONNECTION_TIMEOUT: 10000,
+
+  // عند التحميل الأولي من /readings ناخذ آخر N قراءة ونفلترها إلى تغييرات
+  READBACK_LIMIT: 1000
 };
 
 /* ===========================
     Security & Telegram
-   
 =========================== */
 CONFIG.SECURITY = {
-  // مهلة اعتبار الانقطاع (نبقيها أكثر من CONNECTION_TIMEOUT بمقدار مريح)
   HEARTBEAT_TIMEOUT_MS: 20000,
-
-
-
-  // منع تكرار التنبيهات خلال هذا الزمن (لكل نوع مستقل)
   THROTTLE_MS: 15000
 };
 
@@ -181,10 +181,10 @@ const DASHBOARD_STATE = {
   events: JSON.parse(localStorage.getItem("dashboard-events") || "[]"),
   alerts: JSON.parse(localStorage.getItem("dashboard-alerts") || "[]"),
   chartData: {
-    temperature: JSON.parse(localStorage.getItem("chart-temperature") || "[]"),
-    humidity: JSON.parse(localStorage.getItem("chart-humidity") || "[]"),
-    light: JSON.parse(localStorage.getItem("chart-light") || "[]"),
-    door: JSON.parse(localStorage.getItem("chart-door") || "[]"),
+    temperature: [],
+    humidity: [],
+    light: [],
+    door: [],
   },
   intervals: { clock: null, charts: null, save: null, connectionCheck: null },
   lastDoorState: null,
@@ -192,8 +192,10 @@ const DASHBOARD_STATE = {
   lastAlertTime: { temperature: null, humidity: null, light: null, door: null, connection: null },
   lastResetDate: localStorage.getItem("last-reset-date") || new Date().toDateString(),
   chartNeedsUpdate: { temperature: true, humidity: true, light: true, door: true },
-
   _connectionWasDisconnected: false,
+
+  // للتوافق مع البث الحي من /readings
+  _lastProcessedKey: null
 };
 
 /* ===========================
@@ -233,19 +235,18 @@ function withAlpha(hex, a=0.5){
 }
 
 /* ===========================
-    Telegram helpers 
+    Telegram helpers (بدون تغيير سلوكي)
 =========================== */
 function telegramThrottle(kind){
   const now = Date.now();
   const last = DASHBOARD_STATE.lastAlertTime[kind];
-  if (last && (now - last) < CONFIG.SECURITY.THROTTLE_MS) return true; // ممنوع الآن
+  if (last && (now - last) < CONFIG.SECURITY.THROTTLE_MS) return true;
   DASHBOARD_STATE.lastAlertTime[kind] = now;
   return false;
 }
-
 async function sendTelegram(text){
   try{
-    const proxy = CONFIG.SECURITY.TELEGRAM.PROXY_URL;
+    const proxy = CONFIG.SECURITY.TELEGRAM?.PROXY_URL;
     if (proxy && proxy !== "https://YOUR-WORKER-URL.workers.dev"){
       await fetch(proxy, {
         method: 'POST',
@@ -254,9 +255,8 @@ async function sendTelegram(text){
       });
       return true;
     }
-    // إرسال مباشر (للاختبار فقط)
-    const token = CONFIG.SECURITY.TELEGRAM.BOT_TOKEN;
-    const chatId = CONFIG.SECURITY.TELEGRAM.CHAT_ID;
+    const token = CONFIG.SECURITY.TELEGRAM?.BOT_TOKEN;
+    const chatId = CONFIG.SECURITY.TELEGRAM?.CHAT_ID;
     if (!token || !chatId){
       console.warn("Telegram not configured: no PROXY_URL and no BOT_TOKEN/CHAT_ID.");
       return false;
@@ -284,7 +284,6 @@ function checkConnectionTimeout(){
     updateConnectionStatus("disconnected");
     showLastReadingInfo();
 
-    // 📨 تيليجرام: انقطاع
     if (!telegramThrottle("connection") && DASHBOARD_STATE.currentMode==="security"){
       const last = DASHBOARD_STATE.lastConnectedData;
       const info = `\n🕒 ${formatDateTime(new Date())}\n🌡️ T=${last.temperature}°C  💧H=${last.humidity}%  💡LDR=${last.ldr}  📏D=${last.distance_cm}cm`;
@@ -300,7 +299,6 @@ function resetConnectionTimeout(){
     updateConnectionStatus("connected");
     hideLastReadingInfo();
   }
-  // 📨 تيليجرام: عودة الاتصال (مرّة عند الانتقال فقط)
   if (wasDisconnected && DASHBOARD_STATE._connectionWasDisconnected && DASHBOARD_STATE.currentMode==="security"){
     if (!telegramThrottle("connection")){
       sendTelegram(`✅ <b>تم استعادة الاتصال</b> وعودة تدفق البيانات.\n🕒 ${formatDateTime(new Date())}`);
@@ -337,9 +335,7 @@ function checkDailyReset(){
 }
 function resetDailyStats(){
   DASHBOARD_STATE.dailyStats={temperature:{max:null,min:null},humidity:{max:null,min:null},light:{max:null,min:null},door:{openCount:0,closeCount:0}};
-  DASHBOARD_STATE.chartData={temperature:[],humidity:[],light:[],door:[]};
   saveDailyStats();
-  Object.keys(DASHBOARD_STATE.chartData).forEach(k=>localStorage.setItem(`chart-${k}`,JSON.stringify(DASHBOARD_STATE.chartData[k])));
   updateDailyStatsDisplay();
 }
 function saveDailyStats(){ localStorage.setItem("daily-stats", JSON.stringify(DASHBOARD_STATE.dailyStats)); }
@@ -383,24 +379,20 @@ function getDoorStatus(distance){
    Chart data helpers
 =========================== */
 const lastN = (arr,n)=>arr.slice(Math.max(arr.length-n,0));
-
 function shouldAddToChart(type, value){
   const arr=DASHBOARD_STATE.chartData[type];
   const last=arr[arr.length-1];
   if (!last) return true;
-  if (type==="door") return last.value!==value;         // تخزين تغيّر الحالة فقط
+  if (type==="door") return last.value!==value;
   const th= type==="light" ? 50 : 0.5;
   return Math.abs(last.value-value)>=th;
 }
 function addToChart(type, value, timestamp=null){
   const now=timestamp || new Date();
   DASHBOARD_STATE.chartData[type].push({ value, timestamp: now });
-  // قصّ صارم لآخر 15
   DASHBOARD_STATE.chartData[type] = lastN(DASHBOARD_STATE.chartData[type], CONFIG.CHART_MAX_POINTS);
   localStorage.setItem(`chart-${type}`, JSON.stringify(DASHBOARD_STATE.chartData[type]));
 }
-
-/* خصيصًا للباب: نخزن تغيّر الحالة فقط (بدون تكرار) ونُبقي آخر 15 تغيّر */
 function compressSeries(arr){
   if (!arr || arr.length===0) return [];
   const out=[arr[0]];
@@ -437,7 +429,7 @@ function renderCharts(){
         t("door_chart")
       );
     } else {
-      toDraw = lastN(toDraw, CONFIG.CHART_MAX_POINTS); // تأكيد آخر 15 قراءة
+      toDraw = lastN(toDraw, CONFIG.CHART_MAX_POINTS);
       const cs = getComputedStyle(document.body);
       const colors={
         temperature: cs.getPropertyValue('--temperature').trim() || "#3b82f6",
@@ -447,12 +439,11 @@ function renderCharts(){
       const units={temperature:t("celsius"), humidity:t("percent"), light:""};
       drawSmoothChart(`${type}Chart`, toDraw, colors[type], units[type], t(`${type}_chart`));
     }
-
     DASHBOARD_STATE.chartNeedsUpdate[type]=false;
   });
 }
 
-/* منحنى سلس (Catmull-Rom -> Bezier) للحرارة/الرطوبة/الإضاءة */
+/* منحنى سلس للحرارة/الرطوبة/الإضاءة */
 function drawSmoothChart(canvasId, data, color, unit, title){
   const canvas=document.getElementById(canvasId);
   if (!canvas) return;
@@ -468,7 +459,7 @@ function drawSmoothChart(canvasId, data, color, unit, title){
   const isDark=DASHBOARD_STATE.currentTheme==="dark";
   ctx.fillStyle=isDark?"#1e293b":"#ffffff"; ctx.fillRect(0,0,width,height);
 
-  // Grid (نصف-بيكسل)
+  // Grid
   ctx.strokeStyle=isDark?"#475569":"#e2e8f0"; ctx.lineWidth=1; ctx.setLineDash([3,3]);
   for(let i=0;i<=5;i++){ const y=padding+(chartH*i)/5; ctx.beginPath(); ctx.moveTo(padding,crisp(y)); ctx.lineTo(width-padding,crisp(y)); ctx.stroke(); }
   ctx.setLineDash([]);
@@ -653,19 +644,16 @@ function getEventIcon(type){
   };
   return icons[type] || icons.door;
 }
-
 function checkForEvent(type,severity,message){
   const now=new Date(); const last=DASHBOARD_STATE.events[0];
   if (last && last.type===type && last.severity===severity && now-new Date(last.timestamp)<30000) return;
   const event={ id:Date.now().toString(), type, message, timestamp:now, severity, icon:getEventIcon(type) };
   DASHBOARD_STATE.events.unshift(event); DASHBOARD_STATE.events=DASHBOARD_STATE.events.slice(0,50);
 
-  // إذا كنا في وضع الأمان: حول بعض الأحداث إلى "تنبيه أمني" + أرسل تيليجرام
   if (DASHBOARD_STATE.currentMode==="security" && ((type==="light"&&severity==="high")||(type==="door"&&severity==="high"))){
     DASHBOARD_STATE.alerts.unshift(event);
     showAlertBanner(message);
 
-    // 📨 تيليجرام لهذا الحدث (مع مكبح)
     if (!telegramThrottle(type)){
       const s = DASHBOARD_STATE.sensorData;
       const info = `\n🕒 ${formatDateTime(now)}\n🌡️ T=${s.temperature}°C  💧H=${s.humidity}%  💡LDR=${s.ldr}  📏D=${s.distance_cm}cm`;
@@ -678,7 +666,6 @@ function checkForEvent(type,severity,message){
   localStorage.setItem("dashboard-events", JSON.stringify(DASHBOARD_STATE.events));
   localStorage.setItem("dashboard-alerts", JSON.stringify(DASHBOARD_STATE.alerts));
 }
-
 function showAlertBanner(msg){
   const b=document.getElementById("alertBanner"); document.getElementById("alertMessage").textContent=`${t("security_alert")}: ${msg}`;
   b.classList.remove("hidden"); setTimeout(()=>b.classList.add("hidden"),5000);
@@ -742,7 +729,7 @@ function updateLightCard(){
   const light = DASHBOARD_STATE.isConnected ? DASHBOARD_STATE.sensorData.ldr : DASHBOARD_STATE.lastConnectedData.ldr;
   if (light===null){ value.textContent=`--`; card.className="sensor-card offline"; value.className="sensor-value offline"; return; }
   const lvl=getLightLevel(light);
-  value.textContent = lvl.text; // حالة فقط
+  value.textContent = lvl.text;
   card.className="sensor-card"; value.className="sensor-value";
   if (!DASHBOARD_STATE.isConnected){ card.classList.add("offline"); value.classList.add("offline"); }
   else { card.classList.add("normal"); value.classList.add("normal"); }
@@ -838,7 +825,6 @@ function applyMode(){
   updateModeStatus();
   localStorage.setItem("dashboard-mode", DASHBOARD_STATE.currentMode);
 
-  // (اختياري) أرسل إشعار عند تفعيل/إلغاء وضع الأمان
   if (DASHBOARD_STATE.currentMode==="security"){
     if (!telegramThrottle("connection")) sendTelegram("🛡️ تم <b>تفعيل وضع الأمان</b>.");
   } else {
@@ -857,8 +843,6 @@ function setupEventListeners(){
   document.getElementById("securityMode")?.addEventListener("click", ()=>{ DASHBOARD_STATE.currentMode="security"; applyMode(); });
   document.getElementById("closeAlert")?.addEventListener("click", ()=>document.getElementById("alertBanner")?.classList.add("hidden"));
   document.getElementById("clearAllAlerts")?.addEventListener("click", clearAllAlerts);
-
-
 
   window.addEventListener("beforeunload", ()=>{ clearIntervals(); saveDataToStorage(); });
   window.addEventListener("resize", ()=>{ Object.keys(DASHBOARD_STATE.chartNeedsUpdate).forEach(k=>DASHBOARD_STATE.chartNeedsUpdate[k]=true); setTimeout(renderCharts,100); });
@@ -880,11 +864,80 @@ function saveDataToStorage(){
   }catch(e){ logMessage(`Storage error: ${e.message}`,"error"); }
 }
 
-/* ===========================
-   Firebase Listeners
-=========================== */
+/* =====================================================
+
+===================================================== */
+const EPS = { temp: 0.1, hum: 0.5, light: 50 };
+function doorValFromDistance(d){
+  const st = getDoorStatus(d);
+  return st.class==="open" ? 1 : st.class==="closed" ? 0 : 0.5;
+}
+function shouldChange(prev, curr, th=0){
+  if (prev==null) return true;
+  return Math.abs(curr - prev) > th;
+}
+async function loadInitialFromReadingsIfExists(){
+  const base = `/Users/${CONFIG.USER_UID}/readings`;
+  try{
+    const existsSnap = await database.ref(base).limitToFirst(1).get();
+    if (!existsSnap.exists()){
+      logMessage("No /readings path found. Skipping initial history load (fallback to live nodes).","info");
+      return;
+    }
+
+    logMessage("Loading initial history from /readings...","info");
+    const snap = await database.ref(base).orderByKey().limitToLast(CONFIG.READBACK_LIMIT).get();
+    const data = snap.val() || {};
+    const rows = Object.keys(data)
+      .map(k => ({ key: k, ...data[k], timestamp: data[k]?.timestamp ?? Number(k) }))
+      .filter(r => r.timestamp)
+      .sort((a,b)=>a.timestamp - b.timestamp);
+
+    // نستخرج تغيّرات حقيقية فقط
+    let lastTemp=null, lastHum=null, lastLight=null, lastDoorVal=null;
+    const tempSeries=[], humSeries=[], lightSeries=[], doorSeries=[];
+
+    for (const r of rows){
+      const ts = new Date(r.timestamp || Date.now());
+
+      if (r.temperature!=null){
+        const v = parseFloat(r.temperature);
+        if (shouldChange(lastTemp, v, EPS.temp)){ tempSeries.push({value:v, timestamp:ts}); lastTemp=v; }
+      }
+      if (r.humidity!=null){
+        const v = parseFloat(r.humidity);
+        if (shouldChange(lastHum, v, EPS.hum)){ humSeries.push({value:v, timestamp:ts}); lastHum=v; }
+      }
+      if (r.ldr!=null){
+        const v = parseInt(r.ldr);
+        if (shouldChange(lastLight, v, EPS.light)){ lightSeries.push({value:v, timestamp:ts}); lastLight=v; }
+      }
+      if (r.distance_cm!=null){
+        const dv = doorValFromDistance(parseInt(r.distance_cm));
+        if (dv!==lastDoorVal){ doorSeries.push({value:dv, timestamp:ts}); lastDoorVal=dv; }
+      }
+    }
+
+    DASHBOARD_STATE.chartData.temperature = lastN(tempSeries, CONFIG.CHART_MAX_POINTS);
+    DASHBOARD_STATE.chartData.humidity    = lastN(humSeries, CONFIG.CHART_MAX_POINTS);
+    DASHBOARD_STATE.chartData.light       = lastN(lightSeries, CONFIG.CHART_MAX_POINTS);
+    DASHBOARD_STATE.chartData.door        = lastN(compressSeries(doorSeries), CONFIG.CHART_MAX_POINTS);
+    Object.keys(DASHBOARD_STATE.chartNeedsUpdate).forEach(k=>DASHBOARD_STATE.chartNeedsUpdate[k]=true);
+
+    if (rows.length) DASHBOARD_STATE._lastProcessedKey = rows[rows.length-1].key;
+
+    renderCharts();
+    logMessage("Initial history loaded from /readings.","success");
+  }catch(e){
+    logMessage(`Initial /readings load error: ${e.message}`,"error");
+  }
+}
+
+/* =====================================================
+
+===================================================== */
 function initializeFirebaseListeners(){
-  logMessage("🔥 Initializing Firebase listeners...","info");
+  logMessage("🔥 Initializing per-sensor Firebase listeners...","info");
   const base=`/Users/${CONFIG.USER_UID}`;
 
   database.ref(`${base}/temperature`).on("value",(snap)=>{
@@ -907,7 +960,6 @@ function initializeFirebaseListeners(){
     updateLightCard(); updateDailyStats("light", l);
     if (shouldAddToChart("light", l)){ addToChart("light", l); DASHBOARD_STATE.chartNeedsUpdate.light=true; }
 
-    // 📨 حدث تغيّر مستوى الإضاءة → أرسل في وضع الأمان
     const lvl = getLightLevel(l);
     if (DASHBOARD_STATE.lastLightLevel && lvl.class !== DASHBOARD_STATE.lastLightLevel.class){
       const msg = `${t("light_changed")}: ${lvl.text}`;
@@ -950,25 +1002,70 @@ function initializeFirebaseListeners(){
   });
 }
 
+/* =====================================================
+ 
+===================================================== */
+function listenForLiveReadingsIfExists(){
+  const base = `/Users/${CONFIG.USER_UID}/readings`;
+  database.ref(base).limitToFirst(1).get().then(s=>{
+    if(!s.exists()) return; // ما فيه مسار readings
+    database.ref(base).limitToLast(1).on("child_added",(snap)=>{
+      const key = snap.key;
+      const r = snap.val() || {};
+      const ts = r.timestamp ?? Number(key) ?? Date.now();
+
+      if (DASHBOARD_STATE._lastProcessedKey && Number(key) <= Number(DASHBOARD_STATE._lastProcessedKey)) return;
+
+      // طبق القراءة مع إطلاق أحداث
+      const temp = r.temperature!=null ? parseFloat(r.temperature) : null;
+      const hum  = r.humidity!=null ? parseFloat(r.humidity) : null;
+      const ldr  = r.ldr!=null ? parseInt(r.ldr) : null;
+      const dist = r.distance_cm!=null ? parseInt(r.distance_cm) : null;
+
+      if (temp!=null){ DASHBOARD_STATE.sensorData.temperature = temp; if(shouldAddToChart("temperature", temp)) addToChart("temperature", temp, new Date(ts)), DASHBOARD_STATE.chartNeedsUpdate.temperature=true; updateTemperatureCard(); updateDailyStats("temperature", temp); }
+      if (hum!=null){  DASHBOARD_STATE.sensorData.humidity = hum;     if(shouldAddToChart("humidity", hum))     addToChart("humidity", hum, new Date(ts)),     DASHBOARD_STATE.chartNeedsUpdate.humidity=true;    updateHumidityCard(); updateDailyStats("humidity", hum); }
+      if (ldr!=null){  DASHBOARD_STATE.sensorData.ldr = ldr;           if(shouldAddToChart("light", ldr))        addToChart("light", ldr, new Date(ts)),        DASHBOARD_STATE.chartNeedsUpdate.light=true;       updateLightCard(); updateDailyStats("light", ldr); }
+      if (dist!=null){
+        DASHBOARD_STATE.sensorData.distance_cm = dist;
+        const st=getDoorStatus(dist);
+        const doorVal = doorValFromDistance(dist);
+        if (DASHBOARD_STATE.lastDoorState!==st.class){
+          pushDoorChange(doorVal, new Date(ts));
+          DASHBOARD_STATE.chartNeedsUpdate.door=true;
+
+          if (st.class==="open" && DASHBOARD_STATE.lastDoorState==="closed"){ 
+            DASHBOARD_STATE.dailyStats.door.openCount++; 
+            const sev = DASHBOARD_STATE.currentMode==="security" ? "high" : "medium";
+            checkForEvent("door", sev, t("door_opened")); 
+          }
+          else if (st.class==="closed" && DASHBOARD_STATE.lastDoorState==="open"){ 
+            DASHBOARD_STATE.dailyStats.door.closeCount++; 
+            checkForEvent("door","medium", t("door_closed_event")); 
+          }
+          else if (st.class==="error"){ 
+            checkForEvent("door","warning", t("door_error")); 
+          }
+          DASHBOARD_STATE.lastDoorState=st.class; updateDailyStatsDisplay(); saveDailyStats();
+        }
+        updateDoorCard();
+      }
+
+      resetConnectionTimeout();
+      renderCharts();
+      DASHBOARD_STATE._lastProcessedKey = key;
+    }, (err)=>logMessage(`readings/child_added error: ${err.message}`,"error"));
+  });
+}
+
 /* ===========================
    Init
 =========================== */
 function initDashboard(){
   checkDailyReset();
 
-  // Load chart data (قصّ صارم إلى 15) + ضغط الباب
-  ["temperature","humidity","light","door"].forEach(k=>{
-    const saved=localStorage.getItem(`chart-${k}`);
-    if (saved){
-      try{
-        let arr=JSON.parse(saved).map(it=>({...it, timestamp:new Date(it.timestamp)}));
-        if (k==="door") arr=compressSeries(arr);
-        DASHBOARD_STATE.chartData[k]= lastN(arr, CONFIG.CHART_MAX_POINTS);
-      }catch(e){ logMessage(`Error loading chart ${k}: ${e.message}`,"error"); DASHBOARD_STATE.chartData[k]=[]; }
-    }
-  });
+  DASHBOARD_STATE.chartData = { temperature: [], humidity: [], light: [], door: [] };
 
-  // Load events/alerts
+  // Load events/alerts (محلية)
   try{
     const ev=localStorage.getItem("dashboard-events");
     if (ev) DASHBOARD_STATE.events=JSON.parse(ev).map(e=>({...e, timestamp:new Date(e.timestamp)}));
@@ -981,7 +1078,16 @@ function initDashboard(){
   Object.keys(DASHBOARD_STATE.chartNeedsUpdate).forEach(k=>DASHBOARD_STATE.chartNeedsUpdate[k]=true);
   renderCharts(); updateEventsDisplay(); updateAlertsDisplay();
 
-  initializeFirebaseListeners(); startIntervals(); setupEventListeners();
+  // 1) التحميل الأولي من /readings (إن وُجد)
+  loadInitialFromReadingsIfExists()
+    .finally(()=>{
+      // 2) المستمعون التقليديون للمسارات المنفصلة (يضمن سلوكك السابق)
+      initializeFirebaseListeners();
+      // 3) بث حي إضافي من /readings (إن وُجد) لتحديث التغييرات الجديدة للجميع
+      listenForLiveReadingsIfExists();
+    });
+
+  startIntervals(); setupEventListeners();
   updateFooterByLanguage();
   logMessage("✅ Dashboard initialized successfully!","success");
 }
