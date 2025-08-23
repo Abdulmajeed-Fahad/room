@@ -90,7 +90,6 @@ body{font-family:"Cairo",system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-seri
 .card-title{font-size:.85rem;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
 .card-content{margin-bottom:.7rem}
 
-/* توحيد لون النص للقيم والحالة (إلغاء تلوين بحسب النوع) */
 .sensor-value{font-size:2.2rem;font-weight:900;margin-bottom:.55rem;font-family:"Courier New",monospace;color:var(--value-text)}
 .sensor-value.normal,.sensor-value.warning,.sensor-value.danger{color:var(--value-text)}
 .sensor-value.offline{color:var(--muted)}
@@ -173,3 +172,4 @@ body{font-family:"Cairo",system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-seri
   .sensor-card,.status-card,.charts-card{padding:1rem}
   .sensor-value{font-size:1.9rem}
 }
+
