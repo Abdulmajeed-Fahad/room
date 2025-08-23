@@ -31,7 +31,7 @@ FirebaseAuth auth;
 FirebaseConfig config;
 
 unsigned long previousMillis = 0;
-const long interval = 5000; // إرسال البيانات كل 5 ثواني
+const long interval = 100; 
 
 long readUltrasonicDistance() {
   digitalWrite(TRIG_PIN, LOW);
